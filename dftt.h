@@ -6,6 +6,8 @@
 #define MAX_STR 30
 #define WELCOME_STR ""
 #define VERSION_STR ""
+#define SND_MAJOR_FORMAT_NUM 27
+#define SND_SUBTYPE_NUM 36
 
 /* Check macros */
 /* Check response from sscanf */
@@ -27,13 +29,17 @@
 						} \
 					  })
 
+typedef struct DFTT_Config dftt_config_t;
+
 typedef struct DFTT_Config {
     char ifile[MAX_STR];
     char ofile[MAX_STR];
     sf_count_t sf_count;    // To count number of data read
     uint8_t info_flag;
-}dftt_config_t;
+    int (*outp)(FILE** file, SF_INFO* sf_info, dftt_config_t* dftt_conf, double* data);
+} dftt_config_t;
 
+void set_defaults(dftt_config_t* dftt_conf);
 int get_options(int* argc, char** argv, dftt_config_t* dftt_conf);
 int open_file(SNDFILE** file, SF_INFO* sf_info, dftt_config_t* dftt_conf);
 int read_file(SNDFILE* file, SF_INFO* sf_info, dftt_config_t* dftt_conf, double** x);
@@ -41,5 +47,9 @@ void dft(double* X_real, double* X_imag, double* Pow, long long* N, double* x);
 char* get_sndfile_major_format(SF_INFO* sf_info);
 char* get_sndfile_subtype(SF_INFO* sf_info);
 void output_info(SF_INFO* sf_info, dftt_config_t* dftt_conf);
-int output_file_double(FILE** file, SF_INFO* sf_info, dftt_config_t* dftt_conf, double* data);
+int select_outp(char* strval, dftt_config_t* dftt_conf);
+int output_file_stdout(FILE** file, SF_INFO* sf_info, dftt_config_t* dftt_conf, double* data);
+int output_file_line(FILE** file, SF_INFO* sf_info, dftt_config_t* dftt_conf, double* data);
+int output_file_csv(FILE** file, SF_INFO* sf_info, dftt_config_t* dftt_conf, double* data);
+int output_file_hex_dump(FILE** file, SF_INFO* sf_info, dftt_config_t* dftt_conf, double* data);
 void output_help();

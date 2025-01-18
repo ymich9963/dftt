@@ -1,7 +1,6 @@
 #include "dftt.h"
 
 //TODO: Set up output method - file (comma separated, value on each line, hex dump?, C array, Python list) or stdout
-//TODO: Get the major format and subtypes to output them
 //TODO: Choose what to output, real part, imag part, power
 //TODO: FFT
 //TODO: Test multiple channels and different formats 
@@ -19,6 +18,9 @@ int main (int argc, char** argv) {
 
     /* Might be necessary?   */
     /* sf_info.format = SF_FORMAT_WAV | SF_FORMAT_FLOAT; */
+
+    /* Set defaults to ensure certain behabiour */
+    set_defaults(&dftt_conf);
 
     CHECK_ERR(get_options(&argc, argv, &dftt_conf));
 
@@ -38,7 +40,7 @@ int main (int argc, char** argv) {
     dft(X_real, X_imag, Pow, &sf_info.frames, x);
 
     FILE * ofile = NULL;
-    output_file_double(&ofile, &sf_info, &dftt_conf, Pow);
+    dftt_conf.outp(&ofile, &sf_info, &dftt_conf, Pow);
     printf("\n\tOutputted data to '%s'!\n\n", dftt_conf.ofile);
 
     sf_close(file);
