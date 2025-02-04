@@ -4,12 +4,14 @@ void set_defaults(dftt_config_t* dftt_conf) {
     strcpy(dftt_conf->ofile, "dftt.txt");
     dftt_conf->dft_bins = 0;
     dftt_conf->channels = 1;
+    dftt_conf->tolerance = 10e-7;
     dftt_conf->outp = &output_file_line;
 }
 
 int get_options(int* restrict argc, char** restrict argv, dftt_config_t* restrict dftt_conf) {
     char strval[MAX_STR];
     long lval = 0;
+    double lfval = 0.0;
 
     if (*argc == 1) {
         fprintf(stdout, WELCOME_STR);
@@ -66,6 +68,13 @@ int get_options(int* restrict argc, char** restrict argv, dftt_config_t* restric
             continue;
         }
 
+        if (!(strcmp("-t", argv[i])) || !(strcmp("--tolerance", argv[i]))) {
+            CHECK_RES(sscanf(argv[i + 1], "%lf", &lfval));
+            dftt_conf->tolerance = lfval; 
+            i++;
+            continue;
+        }
+
         if (!(strcmp("--info", argv[i]))) {
             dftt_conf->info_flag = 1;
             continue;
@@ -90,8 +99,9 @@ int open_file(SNDFILE** file, SF_INFO* sf_info, dftt_config_t* dftt_conf) {
 }
 
 int read_file_data(SNDFILE* file, SF_INFO* sf_info, dftt_config_t* dftt_conf, double** x) {
-    *x = calloc(dftt_conf->data_size, sizeof(double));
-    dftt_conf->sf_count = sf_readf_double(file, *x, dftt_conf->data_size);
+    size_t data_size = sf_info->frames * sf_info->channels;
+    *x = calloc(data_size, sizeof(double));
+    dftt_conf->sf_count = sf_readf_double(file, *x, data_size);
     if (dftt_conf->sf_count != sf_info->frames) {
         fprintf(stderr, "\nRead count not equal to requested frames, %lld != %lld.\n\n", dftt_conf->sf_count, sf_info->frames);
 
@@ -99,14 +109,6 @@ int read_file_data(SNDFILE* file, SF_INFO* sf_info, dftt_config_t* dftt_conf, do
     }
 
     return 0;
-}
-
-void set_config(SF_INFO* sf_info, dftt_config_t* dftt_conf) {
-    if (!(dftt_conf->dft_bins)) {
-        dftt_conf->dft_bins = sf_info->frames;
-    }
-    dftt_conf->channels = sf_info->channels;
-    dftt_conf->data_size = sf_info->frames * sf_info->channels;
 }
 
 int mix2mono(SF_INFO* sf_info, double* x, double** x_mono) {
@@ -123,19 +125,35 @@ int mix2mono(SF_INFO* sf_info, double* x, double** x_mono) {
     return 0;
 }
 
-void dft(double* X_real, double* X_imag, double* Pow, long long* N, double* x) {
+void dft(double _Complex* X, long long* N, double* x) {
     uint64_t n;                 // Sample index in time domain
     uint64_t k;                 // Sample index in frequency domain
 
     /* Calculate DFT */
     for (k = 0; k < *N; k++) {
         for (n = 0; n < *N; n++) { 
-            X_real[k] += x[n] * cos(2 * M_PI * n * k / *N);
-            X_imag[k] -= x[n] * sin(2 * M_PI * n * k / *N);
+            X[k] += (x[n] * cos(2 * M_PI * n * k / *N)) + (I * x[n] * sin(2 * M_PI * n * k / *N));
         }
+    }
+}
 
-        /* Calculate the power spectrum of x[n] */
-        Pow[k] = (X_real[k] * X_real[k]) + (X_imag[k] * X_imag[k]);
+void set_zeros(double _Complex* X, long long* N, dftt_config_t* dftt_conf) {
+    uint64_t k;                 // Sample index in frequency domain
+    double X_real, X_imag;
+
+    /* Calculate DFT */
+    for (k = 0; k < *N; k++) {
+        X_real = creal(X[k]);
+        check_zero_tolerance(&X_real, N, dftt_conf);
+        X_imag = cimag(X[k]);
+        check_zero_tolerance(&X_imag, N, dftt_conf);
+        X[k] = X_real + (I * X_imag);
+    }
+}
+
+void check_zero_tolerance(double* x, long long* N, dftt_config_t* dftt_conf) {
+    if (*x < dftt_conf->tolerance && *x > -dftt_conf->tolerance) {
+        *x = 0;
     }
 }
 
@@ -174,7 +192,7 @@ void output_info(SF_INFO* sf_info, dftt_config_t* dftt_conf) {
         fprintf(stdout, "\tChannels: %d\n", sf_info->channels);
         fprintf(stdout, "\tFormat: %s\n", get_sndfile_major_format(sf_info));
         fprintf(stdout, "\tSubtype: %s\n", get_sndfile_subtype(sf_info));
-        fprintf(stdout, "\t\t---------------\n");
+        fprintf(stdout, "\t\t---------------\n\n");
     }
 }
 
@@ -195,21 +213,25 @@ int select_outp(char* strval, dftt_config_t* dftt_conf) {
         dftt_conf->outp = &output_file_hex_dump; 
         return 0;
     }
+    if(!(strcmp("c-array", strval))) {
+        dftt_conf->outp = &output_file_c_array; 
+        return 0;
+    }
 
     fprintf(stderr, "\nOutput method not available.\n");
     return 1;
 }
 
-int output_file_stdout(FILE** file, SF_INFO* sf_info, dftt_config_t* dftt_conf, double* data) {
+int output_file_stdout(FILE** file, SF_INFO* sf_info, dftt_config_t* dftt_conf, double _Complex* X) {
 
-    for (long i = 0; i < sf_info->frames; i++){
-        fprintf(stdout, "%lf\n", data[i]);
+    for (uint32_t i = 0; i < sf_info->frames; i++){
+        fprintf(stdout, "%lf + j%lf\n", creal(X[i]), cimag(X[i]));
     }
 
     return 0;
 }
 
-int output_file_line(FILE** file, SF_INFO* sf_info, dftt_config_t* dftt_conf, double* data) {
+int output_file_line(FILE** file, SF_INFO* sf_info, dftt_config_t* dftt_conf, double _Complex* X) {
 
     *file = fopen(dftt_conf->ofile, "w");
     if(!(*file)) {
@@ -219,13 +241,13 @@ int output_file_line(FILE** file, SF_INFO* sf_info, dftt_config_t* dftt_conf, do
     };
 
     for (long i = 0; i < sf_info->frames; i++){
-        fprintf(*file, "%lf\n", data[i]);
+        fprintf(*file, "%lf + j%lf\n", creal(X[i]), cimag(X[i]));
     }
 
     return 0;
 }
 
-int output_file_csv(FILE** file, SF_INFO* sf_info, dftt_config_t* dftt_conf, double* data) {
+int output_file_csv(FILE** file, SF_INFO* sf_info, dftt_config_t* dftt_conf, double _Complex* X) {
 
     *file = fopen(dftt_conf->ofile, "w");
     if(!(*file)) {
@@ -234,15 +256,16 @@ int output_file_csv(FILE** file, SF_INFO* sf_info, dftt_config_t* dftt_conf, dou
         return 1;
     };
 
+    fprintf(*file, "Real, Imag\n");
     for (long i = 0; i < (sf_info->frames) - 1; i++){
-        fprintf(*file, "%lf,", data[i]);
+        fprintf(*file, "%lf, %lf\n", creal(X[i]), cimag(X[i]));
     }
-    fprintf(*file, "%lf\n", data[sf_info->frames]);
+    fprintf(*file, "%lf, %lf", creal(X[sf_info->frames]), cimag(X[sf_info->frames]));
 
     return 0;
 }
 
-int output_file_hex_dump(FILE** file, SF_INFO* sf_info, dftt_config_t* dftt_conf, double* data) {
+int output_file_hex_dump(FILE** file, SF_INFO* sf_info, dftt_config_t* dftt_conf, double _Complex* X) {
 
     *file = fopen(dftt_conf->ofile, "wb");
     if(!(*file)) {
@@ -251,7 +274,37 @@ int output_file_hex_dump(FILE** file, SF_INFO* sf_info, dftt_config_t* dftt_conf
         return 1;
     };
 
-    fwrite(data, sizeof(double), sf_info->frames, *file);
+    /* Write an extract function  */
+    /* fwrite(X_real, sizeof(double), sf_info->frames, *file); */
+    /* fwrite(X_imag, sizeof(double), sf_info->frames, *file); */
+
+    fprintf(stdout, "Data covers 2 x %llud byte sections.", sizeof(double) * sf_info->frames);
+
+    return 0;
+}
+
+int output_file_c_array(FILE** file, SF_INFO* sf_info, dftt_config_t* dftt_conf, double _Complex* X) {
+
+    *file = fopen(dftt_conf->ofile, "w");
+    if(!(*file)) {
+        fprintf(stderr, "\nError, unable to open output file.\n\n");
+
+        return 1;
+    };
+
+    fprintf(*file, "#define DFT_ARR_SIZE\t%lld\n\n", sf_info->frames);
+
+    fprintf(*file, "X_real[DFT_ARR_SIZE] = [");
+    for (long i = 0; i < (sf_info->frames) - 1; i++){
+        fprintf(*file, "%lf, ", creal(X[i]));
+    }
+    fprintf(*file, "%lf]\n\n", creal(X[sf_info->frames]));
+
+    fprintf(*file, "X_imag[DFT_ARR_SIZE] = [");
+    for (long i = 0; i < (sf_info->frames) - 1; i++){
+        fprintf(*file, "%lf, ", cimag(X[i]));
+    }
+    fprintf(*file, "%lf]\n", cimag(X[sf_info->frames]));
 
     return 0;
 }
