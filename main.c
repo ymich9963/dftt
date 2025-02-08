@@ -1,6 +1,5 @@
 #include "dftt.h"
 
-//TODO: Timer
 //TODO: FFT
 //FIX: How tf do I implement different bins. Made the option take the data but implementation is wrong.
 
@@ -9,10 +8,8 @@ int main (int argc, char** argv) {
     SF_INFO sf_info;        // Input audio file info
     FILE * ofile;           // Output file pointer
     double* x;              // Data from audio file, considered the input signal
-    double* x_mono;
-    double* X_real;         // DFT of the Real part
-    double* X_imag;         // DFT of the Imaginary part
-    double complex* X;
+    double* x_mono;         // Store the audio file data converted to single-channel
+    double complex* X;      // Fourier Transform result
 
     dftt_config_t dftt_conf; // Tool config
 
@@ -38,12 +35,12 @@ int main (int argc, char** argv) {
     x_mono = NULL;
     mix2mono(&sf_info, x, &x_mono);
 
-    printf("\tWorking on it...\n");
-
     /* Allocate */
-    X_real = calloc(sf_info.frames, sizeof(double));
-    X_imag = calloc(sf_info.frames, sizeof(double));
     X = calloc(sf_info.frames, sizeof(double complex));
+
+    check_start_timer(&dftt_conf);
+
+    printf("\tCalculating DFT...\n");
 
     /* DFT and Power Spectrum Calculation */
     dft(X, &sf_info.frames, x_mono);
@@ -55,10 +52,12 @@ int main (int argc, char** argv) {
     dftt_conf.outp(&ofile, &sf_info, &dftt_conf, X);
     printf("\tOutputted data to '%s'!\n\n", dftt_conf.ofile);
 
+    check_end_timer_output(&dftt_conf);
+
     sf_close(file);
     fclose(ofile);
     free(x);
-    free(X_real);
-    free(X_imag);
+    free(x_mono);
+    free(X);
     return 0;
 }

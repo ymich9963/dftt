@@ -5,6 +5,8 @@ void set_defaults(dftt_config_t* dftt_conf) {
     dftt_conf->dft_bins = 0;
     dftt_conf->channels = 1;
     dftt_conf->tolerance = 10e-7;
+    dftt_conf->fft_flag = 0;
+    dftt_conf->timer_flag = 0;
     dftt_conf->outp = &output_file_line;
 }
 
@@ -75,6 +77,18 @@ int get_options(int* restrict argc, char** restrict argv, dftt_config_t* restric
             continue;
         }
 
+        if (!(strcmp("--fft", argv[i]))) {
+            CHECK_RES(sscanf(argv[i + 1], "%s", strval));
+            select_fft_algo(strval, dftt_conf);
+            i++;
+            continue;
+        }
+
+        if (!(strcmp("--timer", argv[i]))) {
+            dftt_conf->timer_flag = 1;
+            continue;
+        }
+
         if (!(strcmp("--info", argv[i]))) {
             dftt_conf->info_flag = 1;
             continue;
@@ -125,6 +139,13 @@ int mix2mono(SF_INFO* sf_info, double* x, double** x_mono) {
     return 0;
 }
 
+void check_start_timer(dftt_config_t* dftt_conf) {
+    if (dftt_conf->timer_flag) {
+        dftt_conf->start_time = clock();
+        printf("\tStarted timer!\n");
+    }
+}
+
 void dft(double _Complex* X, long long* N, double* x) {
     uint64_t n;                 // Sample index in time domain
     uint64_t k;                 // Sample index in frequency domain
@@ -135,6 +156,10 @@ void dft(double _Complex* X, long long* N, double* x) {
             X[k] += (x[n] * cos(2 * M_PI * n * k / *N)) + (I * x[n] * sin(2 * M_PI * n * k / *N));
         }
     }
+}
+
+void fft_radix2_dit() {
+
 }
 
 void set_zeros(double _Complex* X, long long* N, dftt_config_t* dftt_conf) {
@@ -222,6 +247,12 @@ int select_outp(char* strval, dftt_config_t* dftt_conf) {
     return 1;
 }
 
+int select_fft_algo(char* strval, dftt_config_t* dftt_conf) {
+    if (!(strcmp("radix2-dit", strval))) {
+        dftt_conf->fft = &fft_radix2_dit;
+    }
+}
+
 int output_file_stdout(FILE** file, SF_INFO* sf_info, dftt_config_t* dftt_conf, double _Complex* X) {
 
     for (uint32_t i = 0; i < sf_info->frames; i++){
@@ -307,6 +338,14 @@ int output_file_c_array(FILE** file, SF_INFO* sf_info, dftt_config_t* dftt_conf,
     fprintf(*file, "%lf]\n", cimag(X[sf_info->frames]));
 
     return 0;
+}
+
+
+void check_end_timer_output(dftt_config_t* dftt_conf) {
+    if (dftt_conf->timer_flag) {
+        dftt_conf->end_time = clock() - dftt_conf->start_time;
+        printf("\n\tTime taken: %ld seconds\n\n", dftt_conf->end_time/CLOCKS_PER_SEC);
+    }
 }
 
 void output_help() {

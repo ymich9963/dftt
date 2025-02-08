@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <complex.h>
+#include <time.h>
 
 #define MAX_STR 30
 #define WELCOME_STR ""
@@ -41,11 +42,15 @@ typedef struct DFTT_Config {
     char ifile[MAX_STR];
     char ofile[MAX_STR];
     sf_count_t sf_count;    // To count number of data read
-    uint8_t info_flag;
     long long dft_bins;
     double tolerance;
-    size_t data_size;
     uint8_t channels;
+    clock_t start_time;
+    clock_t end_time;
+    uint8_t info_flag;
+    uint8_t fft_flag;
+    uint8_t timer_flag;
+    void (*fft)();
     int (*outp)(FILE** file, SF_INFO* sf_info, dftt_config_t* dftt_conf, double _Complex* X);
 } dftt_config_t;
 
@@ -54,6 +59,7 @@ int get_options(int* argc, char** argv, dftt_config_t* dftt_conf);
 int open_file(SNDFILE** file, SF_INFO* sf_info, dftt_config_t* dftt_conf);
 int read_file_data(SNDFILE* file, SF_INFO* sf_info, dftt_config_t* dftt_conf, double** x);
 int mix2mono(SF_INFO* sf_info, double* x, double** x_mono);
+void check_start_timer(dftt_config_t* dftt_conf);
 void dft(double _Complex* X, long long* N, double* x);
 void set_zeros(double _Complex* X, long long* N, dftt_config_t* dftt_conf);
 void check_zero_tolerance(double* x, long long* N, dftt_config_t* dftt_conf);
@@ -61,9 +67,11 @@ char* get_sndfile_major_format(SF_INFO* sf_info);
 char* get_sndfile_subtype(SF_INFO* sf_info);
 void output_info(SF_INFO* sf_info, dftt_config_t* dftt_conf);
 int select_outp(char* strval, dftt_config_t* dftt_conf);
+int select_fft_algo(char* strval, dftt_config_t* dftt_conf);
 int output_file_stdout(FILE** file, SF_INFO* sf_info, dftt_config_t* dftt_conf, double _Complex* X);
 int output_file_line(FILE** file, SF_INFO* sf_info, dftt_config_t* dftt_conf, double _Complex* X);
 int output_file_csv(FILE** file, SF_INFO* sf_info, dftt_config_t* dftt_conf, double _Complex* X);
 int output_file_hex_dump(FILE** file, SF_INFO* sf_info, dftt_config_t* dftt_conf, double _Complex* X);
 int output_file_c_array(FILE** file, SF_INFO* sf_info, dftt_config_t* dftt_conf, double _Complex* X);
+void check_end_timer_output(dftt_config_t* dftt_conf);
 void output_help();
