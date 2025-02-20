@@ -4,6 +4,7 @@
 //FIX: How tf do I implement different bins. Made the option take the data but implementation is wrong.
 //TODO: Add text file and string input
 //TODO: Add output input data flag
+//TODO: Create a tool to extract the data from an audio file (adx - audio data extractor)
 
 int main (int argc, char** argv) {
     SNDFILE* file;          // Pointer to the input audio file
