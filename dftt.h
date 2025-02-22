@@ -53,15 +53,22 @@ typedef struct DFTT_Config {
 
     uint8_t info_flag;
     uint8_t timer_flag;
+    uint8_t input_flag;
 
+    int (*inp)(double** x, dftt_config_t* dftt_conf);
     void (*dft)(double _Complex** X, double* x_mono, dftt_config_t* dftt_conf);
     int (*outp)(FILE** file, dftt_config_t* dftt_conf, double _Complex* X);
 } dftt_config_t;
 
 void set_defaults(dftt_config_t* dftt_conf);
 int get_options(int* argc, char** argv, dftt_config_t* dftt_conf);
-int open_file(SNDFILE** file, SF_INFO* sf_info, dftt_config_t* dftt_conf);
-int read_file_data(SNDFILE* file, SF_INFO* sf_info, dftt_config_t* dftt_conf, double** x);
+int read_audio_file_input(double** x, dftt_config_t* dftt_conf);
+int read_csv_string_file_input(double** x, dftt_config_t* dftt_conf);
+int open_audio_file(SNDFILE** file, SF_INFO* sf_info, dftt_config_t* dftt_conf);
+int open_csv_file(FILE** file, dftt_config_t* dftt_conf);
+int read_audio_file_data(SNDFILE* file, SF_INFO* sf_info, dftt_config_t* dftt_conf, double** x);
+int read_csv_file_data(FILE* file, dftt_config_t* dftt_conf, char** data_string);
+int get_data_from_string(char* data_string, double** x, dftt_config_t* dftt_conf);
 int mix2mono(SF_INFO* sf_info, double* x, double** x_mono);
 void convert_to_complex(double* x, double _Complex* X_complex, size_t* size);
 void check_start_timer(dftt_config_t* dftt_conf);

@@ -1,10 +1,6 @@
 build/
-examples/
-wave*.wav
+inputs/
 test/build/
 test/results/
 formatted/
-dftt*.txt
-wave*.wav
 dftt.txt
-wave.wav
