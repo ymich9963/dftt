@@ -54,6 +54,7 @@ typedef struct DFTT_Config {
     uint8_t info_flag;
     uint8_t timer_flag;
     uint8_t input_flag;
+    uint8_t quiet_flag;
 
     int (*inp)(double** x, dftt_config_t* dftt_conf);
     void (*dft)(double _Complex** X, double* x_mono, dftt_config_t* dftt_conf);
@@ -82,7 +83,8 @@ void set_zeros(double _Complex* X, dftt_config_t* dftt_conf);
 void check_zero_tolerance(double* x, dftt_config_t* dftt_conf);
 char* get_sndfile_major_format(SF_INFO* sf_info);
 char* get_sndfile_subtype(SF_INFO* sf_info);
-void output_info(SF_INFO* sf_info, dftt_config_t* dftt_conf);
+void output_audio_file_info(SF_INFO* sf_info, dftt_config_t* dftt_conf);
+void output_csv_file_string_info(dftt_config_t* dftt_conf);
 int select_outp(char* strval, dftt_config_t* dftt_conf);
 int select_fft_algo(char* strval, dftt_config_t* dftt_conf);
 int output_file_stdout(FILE** file, dftt_config_t* dftt_conf, double _Complex* X);

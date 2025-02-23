@@ -3,4 +3,4 @@
 
 ## Limitations
 - Only takes real-values inputs.
-- CSV input must in a single row.
+- CSV input must in a single row, comma separated.

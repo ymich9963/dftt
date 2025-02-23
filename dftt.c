@@ -7,9 +7,10 @@ void set_defaults(dftt_config_t* dftt_conf) {
     dftt_conf->tolerance = 10e-7;
     dftt_conf->info_flag = 0;
     dftt_conf->timer_flag = 0;
+    dftt_conf->quiet_flag = 0;
     dftt_conf->inp = &read_audio_file_input;
     dftt_conf->dft = &dft;
-    dftt_conf->outp = &output_file_line;
+    dftt_conf->outp = &output_file_stdout;
 }
 
 int get_options(int* restrict argc, char** restrict argv, dftt_config_t* restrict dftt_conf) {
@@ -112,6 +113,11 @@ int get_options(int* restrict argc, char** restrict argv, dftt_config_t* restric
             continue;
         }
 
+        if (!(strcmp("-q", argv[i])) || !(strcmp("--quiet", argv[i]))) {
+            dftt_conf->quiet_flag = 1; 
+            continue;
+        }
+
         fprintf(stderr, "\nNo such option '%s'. Please check inputs.\n\n", argv[i]);
 
         return 1;
@@ -132,15 +138,15 @@ int read_audio_file_input(double** x, dftt_config_t* dftt_conf) {
     file = NULL;
     CHECK_ERR(open_audio_file(&file, &sf_info, dftt_conf));
 
-    /* Output info on the inputted file */
-    output_info(&sf_info, dftt_conf);
-
     /* Initialise input data array and read the input audio file */
     file_data = NULL; 
     CHECK_ERR(read_audio_file_data(file, &sf_info, dftt_conf, &file_data));
 
     /* Translate the data to one channel (mono) */
     mix2mono(&sf_info, file_data, x);
+
+    /* Output info on the inputted file */
+    output_audio_file_info(&sf_info, dftt_conf);
 
     return 0;
 }
@@ -156,15 +162,17 @@ int read_csv_string_file_input(double** x, dftt_config_t* dftt_conf) {
     /* Try to open and read input file, if not then it's considered a data string */
     if (!(open_csv_file(&file, dftt_conf))) {
         CHECK_ERR(read_csv_file_data(file, dftt_conf, &data_string));
+        dftt_conf->input_flag = 'f';
     } else {
         data_string = malloc(sizeof(char) * strlen(dftt_conf->ifile)); 
         strcpy(data_string, dftt_conf->ifile);
+        dftt_conf->input_flag = 's';
     }
 
     get_data_from_string(data_string, x, dftt_conf);
 
     /* Output info on the inputted file */
-    // output_info(&sf_info, dftt_conf);
+    output_csv_file_string_info(dftt_conf);
 
     return 0;
 }
@@ -220,6 +228,7 @@ int get_data_from_string(char* data_string, double** x, dftt_config_t* dftt_conf
         i++;
     }
 
+    /* Set the total samples to be the sample points read */
     dftt_conf->total_samples = samples;
 
     return 0;
@@ -283,7 +292,7 @@ int select_fft_algo(char* strval, dftt_config_t* dftt_conf) {
 }
 
 void check_start_timer(dftt_config_t* dftt_conf) {
-    if (dftt_conf->timer_flag) {
+    if (dftt_conf->timer_flag && !dftt_conf->quiet_flag) {
         dftt_conf->start_time = clock();
         printf("Started timer.\n");
     }
@@ -356,7 +365,9 @@ void dft(double complex** X, double* x, dftt_config_t* dftt_conf) {
     N = dftt_conf->total_samples;
     *X = malloc(sizeof(double complex) * dftt_conf->total_samples);
 
-    printf("Calculating DFT...\n");
+    if (!dftt_conf->quiet_flag) {
+        printf("Calculating DFT.\n");
+    }
 
     /* Calculate DFT */
     for (k = 0; k < N; k++) {
@@ -368,7 +379,9 @@ void dft(double complex** X, double* x, dftt_config_t* dftt_conf) {
 
 void fft_radix2_dit(double complex** X, double* x, dftt_config_t* dftt_conf) {
 
-    printf("Calculating DFT using Radix-2 Decimation In Time.\n");
+    if (!dftt_conf->quiet_flag) {
+        printf("Calculating DFT using Radix-2 Decimation In Time.\n");
+    }
 
     /* Add padding to the size to make it a power of 2 and reallocate */
     dftt_conf->padded_size = get_padded_size(&dftt_conf->total_samples);
@@ -464,16 +477,28 @@ char* get_sndfile_subtype(SF_INFO* sf_info) {
     return "N/A";
 }
 
-void output_info(SF_INFO* sf_info, dftt_config_t* dftt_conf) {
-    if (dftt_conf->info_flag) {
+void output_audio_file_info(SF_INFO* sf_info, dftt_config_t* dftt_conf) {
+    if (dftt_conf->info_flag && !dftt_conf->quiet_flag) {
         fprintf(stdout, "\n");
-        fprintf(stdout, "\tFile Name: %s\n", dftt_conf->ifile);
-        fprintf(stdout, "\tSample Rate: %d\n", sf_info->samplerate);
-        fprintf(stdout, "\tSamples: %lld\n", sf_info->frames);
-        fprintf(stdout, "\tChannels: %d\n", sf_info->channels);
-        fprintf(stdout, "\tFormat: %s\n", get_sndfile_major_format(sf_info));
-        fprintf(stdout, "\tSubtype: %s\n", get_sndfile_subtype(sf_info));
+        fprintf(stdout, "\n--INFO--\n");
+        fprintf(stdout, "File Name: %s\n", dftt_conf->ifile);
+        fprintf(stdout, "Sample Rate: %d\n", sf_info->samplerate);
+        fprintf(stdout, "Samples: %lld\n", sf_info->frames);
+        fprintf(stdout, "Channels: %d\n", sf_info->channels);
+        fprintf(stdout, "Format: %s\n", get_sndfile_major_format(sf_info));
+        fprintf(stdout, "Subtype: %s\n", get_sndfile_subtype(sf_info));
+        fprintf(stdout, "\n---");
+    }
+}
+
+void output_csv_file_string_info(dftt_config_t* dftt_conf) {
+    if (dftt_conf->info_flag && !dftt_conf->quiet_flag) {
         fprintf(stdout, "\n");
+        fprintf(stdout, "--INFO--\n");
+        fprintf(stdout, dftt_conf->input_flag == 'f' ? "File Name: %s\n" : "Input String: %s\n", dftt_conf->ifile);
+        fprintf(stdout, "Samples: %lld\n", dftt_conf->total_samples);
+        fprintf(stdout, dftt_conf->input_flag == 'f' ? "Format: CSV File\n" : "Format: CSV String\n");
+        fprintf(stdout, "--------\n\n");
     }
 }
 
@@ -512,7 +537,9 @@ int select_outp(char* strval, dftt_config_t* dftt_conf) {
 int output_file_stdout(FILE** file, dftt_config_t* dftt_conf, double complex* X) {
 
     *file = stdout;
-    fprintf(*file, "\n");
+    if (!dftt_conf->quiet_flag) {
+        fprintf(*file, "\n");
+    }
 
     for (size_t i = 0; i < dftt_conf->total_samples; i++){
         fprintf(*file, "%lf", creal(X[i]));
@@ -536,7 +563,9 @@ int output_file_line(FILE** file, dftt_config_t* dftt_conf, double complex* X) {
         fprintf(*file, cimag(X[i]) >= 0 ? " + %lfi\n" : " - %lfi\n", fabs(cimag(X[i])));
     }
 
-    printf("\tOutputted data to '%s'!\n\n", dftt_conf->ofile);
+    if (!dftt_conf->quiet_flag) {
+        printf("\tOutputted data to '%s'!\n\n", dftt_conf->ofile);
+    }
 
     return 0;
 }
@@ -602,9 +631,9 @@ int output_file_c_array(FILE** file, dftt_config_t* dftt_conf, double complex* X
 }
 
 void check_end_timer_output(dftt_config_t* dftt_conf) {
-    if (dftt_conf->timer_flag) {
+    if (dftt_conf->timer_flag && !dftt_conf->quiet_flag) {
         dftt_conf->end_time = clock() - dftt_conf->start_time;
-        printf("\nTime taken: %.5f seconds\n\n", (float) dftt_conf->end_time/CLOCKS_PER_SEC);
+        printf("Time taken: %.5f seconds\n", (float) dftt_conf->end_time/CLOCKS_PER_SEC);
     }
 }
 
@@ -622,6 +651,7 @@ void output_help() {
             "\t\t--dft\t\t\t\t= Regular DFT calculation using Euler's formula to expand the summation. Default behaviour, included for completion.\n"
             "\t\t--timer\t\t\t\t= Start a timer to see how long the calculation takes.\n"
             "\t\t--info\t\t\t\t= Output to stdout some info about the input file.\n"
+            "\t-q,\t--quiet\t\t\t\t= Silence all status messages to stdout. Overwrites '--timer' and '--info'.\n"
             "\n"
           );
 }

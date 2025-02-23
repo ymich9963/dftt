@@ -2,7 +2,6 @@
 
 //FIX: FFT output
 //FIX: How tf do I implement different bins. Made the option take the data but implementation is wrong.
-//TODO: Add different info output functions depending on the process used
 //TODO: Create a tool to extract the data from an audio file (adx - audio data extractor)
 
 int main (int argc, char** argv) {
@@ -20,14 +19,17 @@ int main (int argc, char** argv) {
     /* Execute the read input function  */
     CHECK_ERR(dftt_conf.inp(&x, &dftt_conf));
 
-    /* Start the timer */
-    check_start_timer(&dftt_conf);
-
     /* Initialise DFT result array */
     X = NULL;
 
+    /* Start the timer */
+    check_start_timer(&dftt_conf);
+
     /* DFT */
     dftt_conf.dft(&X, x, &dftt_conf);
+
+    /* Check if timer was activated and output time if yes */
+    check_end_timer_output(&dftt_conf);
 
     /* Set the zeros based on the tolerance */
     set_zeros(X, &dftt_conf);
@@ -35,9 +37,6 @@ int main (int argc, char** argv) {
     /* Initialise outuput buffer and output the DFT array */
     ofile = NULL;
     dftt_conf.outp(&ofile, &dftt_conf, X);
-
-    /* Check if timer was activated and output time if yes */
-    check_end_timer_output(&dftt_conf);
 
     fclose(ofile);
     free(x);
