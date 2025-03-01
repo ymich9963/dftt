@@ -41,9 +41,8 @@ typedef struct DFTT_Config dftt_config_t;
 typedef struct DFTT_Config {
     char ifile[MAX_STR];
     char ofile[MAX_STR];
-    sf_count_t sf_count;    // To count number of data read
     uint64_t dft_bins;
-    double tolerance;
+    uint8_t precision;
     uint8_t channels;
     size_t padded_size; 
     size_t total_samples; 
@@ -55,6 +54,7 @@ typedef struct DFTT_Config {
     uint8_t timer_flag;
     uint8_t input_flag;
     uint8_t quiet_flag;
+    uint8_t pow_flag;
 
     int (*inp)(double** x, dftt_config_t* dftt_conf);
     void (*dft)(double _Complex** X, double* x_mono, dftt_config_t* dftt_conf);
@@ -79,8 +79,8 @@ void reorder_data(uint32_t* index_arr, double _Complex* data_arr, size_t* data_s
 void dft(double _Complex** X, double* x, dftt_config_t* dftt_conf);
 double _Complex get_twiddle_factor(size_t* nk, size_t* N);
 void fft_radix2_dit(double _Complex** X, double* x, dftt_config_t* dftt_conf);
-void set_zeros(double _Complex* X, dftt_config_t* dftt_conf);
-void check_zero_tolerance(double* x, dftt_config_t* dftt_conf);
+void pow_spec(double _Complex* X, dftt_config_t* dftt_conf);
+void set_precision(double _Complex* X, dftt_config_t* dftt_conf);
 char* get_sndfile_major_format(SF_INFO* sf_info);
 char* get_sndfile_subtype(SF_INFO* sf_info);
 void output_audio_file_info(SF_INFO* sf_info, dftt_config_t* dftt_conf);
@@ -88,7 +88,7 @@ void output_csv_file_string_info(dftt_config_t* dftt_conf);
 int select_outp(char* strval, dftt_config_t* dftt_conf);
 int select_fft_algo(char* strval, dftt_config_t* dftt_conf);
 int output_file_stdout(FILE** file, dftt_config_t* dftt_conf, double _Complex* X);
-int output_file_line(FILE** file, dftt_config_t* dftt_conf, double _Complex* X);
+int output_file_txt_line(FILE** file, dftt_config_t* dftt_conf, double _Complex* X);
 int output_file_csv(FILE** file, dftt_config_t* dftt_conf, double _Complex* X);
 int output_file_hex_dump(FILE** file, dftt_config_t* dftt_conf, double _Complex* X);
 int output_file_c_array(FILE** file, dftt_config_t* dftt_conf, double _Complex* X);

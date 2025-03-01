@@ -1,8 +1,9 @@
 #include "dftt.h"
 
-//FIX: FFT output
-//FIX: How tf do I implement different bins. Made the option take the data but implementation is wrong.
-//TODO: Create a tool to extract the data from an audio file (adx - audio data extractor)
+//TODO: Plotting?
+//TODO: Set how much padding to do
+//TODO: Bins
+//TODO: RadixM?
 
 int main (int argc, char** argv) {
     double* x;              // Input data
@@ -28,11 +29,11 @@ int main (int argc, char** argv) {
     /* DFT */
     dftt_conf.dft(&X, x, &dftt_conf);
 
-    /* Check if timer was activated and output time if yes */
+    /* Check if timer was activated and output time */
     check_end_timer_output(&dftt_conf);
 
-    /* Set the zeros based on the tolerance */
-    set_zeros(X, &dftt_conf);
+    /* Calculate power spectrum if selected */
+    pow_spec(X, &dftt_conf);
 
     /* Initialise outuput buffer and output the DFT array */
     ofile = NULL;
