@@ -2,10 +2,11 @@
 
 void set_defaults(dftt_config_t* dftt_conf) {
     strcpy(dftt_conf->ofile, "dftt.txt");
-    dftt_conf->dft_bins = 0;
+    dftt_conf->total_samples = 0;
     dftt_conf->channels = 1;
     dftt_conf->precision = 6;
     dftt_conf->info_flag = 0;
+    dftt_conf->fft_flag = 0;
     dftt_conf->timer_flag = 0;
     dftt_conf->quiet_flag = 0;
     dftt_conf->pow_flag = 0;
@@ -77,9 +78,9 @@ int get_options(int* restrict argc, char** restrict argv, dftt_config_t* restric
             continue;
         }
 
-        if (!(strcmp("-N", argv[i])) || !(strcmp("--dft-bins", argv[i]))) {
+        if (!(strcmp("-N", argv[i])) || !(strcmp("--total-samples", argv[i]))) {
             CHECK_RES(sscanf(argv[i + 1], "%ld", &lval));
-            dftt_conf->dft_bins = lval; 
+            dftt_conf->total_samples = lval; 
             i++;
             continue;
         }
@@ -94,12 +95,14 @@ int get_options(int* restrict argc, char** restrict argv, dftt_config_t* restric
         if (!(strcmp("--fft", argv[i]))) {
             CHECK_RES(sscanf(argv[i + 1], "%s", strval));
             CHECK_RET(select_fft_algo(strval, dftt_conf));
+            dftt_conf->fft_flag = 1;
             i++;
             continue;
         }
 
         if (!(strcmp("--dft", argv[i]))) {
             dftt_conf->dft = &dft;
+            dftt_conf->fft_flag = 0;
             i++;
             continue;
         }
@@ -146,7 +149,7 @@ int read_audio_file_input(double** x, dftt_config_t* dftt_conf) {
 
     /* Initialise input data array and read the input audio file */
     file_data = NULL; 
-    CHECK_ERR(read_audio_file_data(file, &sf_info, dftt_conf, &file_data));
+    CHECK_ERR(read_audio_file_data(file, &sf_info, &file_data));
 
     /* Translate the data to one channel (mono) */
     mix2mono(&sf_info, file_data, x);
@@ -154,12 +157,17 @@ int read_audio_file_input(double** x, dftt_config_t* dftt_conf) {
     /* Output info on the inputted file */
     output_audio_file_info(&sf_info, dftt_conf);
 
+    /* If total samples wasn't specified in the options, assign the detected samples */
+    if (!dftt_conf->total_samples) {
+        dftt_conf->total_samples = sf_info.frames;
+    }
+
     return 0;
 }
 
 int read_csv_string_file_input(double** x, dftt_config_t* dftt_conf) {
     FILE* file;          // Pointer to the input audio file
-    char* data_string;         // Input data from file
+    char* data_string;   // Input data from file
 
     /* Initialise */
     file = NULL;
@@ -234,13 +242,15 @@ int get_data_from_string(char* data_string, double** x, dftt_config_t* dftt_conf
         i++;
     }
 
-    /* Set the total samples to be the sample points read */
-    dftt_conf->total_samples = samples;
+    /* If total samples wasn't specified in the options, assign the detected samples */
+    if (!dftt_conf->total_samples) {
+        dftt_conf->total_samples = samples;
+    }
 
     return 0;
 }
 
-int read_audio_file_data(SNDFILE* file, SF_INFO* sf_info, dftt_config_t* dftt_conf, double** x) {
+int read_audio_file_data(SNDFILE* file, SF_INFO* sf_info, double** x) {
     /* Get audio file data size */
     size_t data_size = sf_info->frames * sf_info->channels;
     *x = calloc(data_size, sizeof(double));
@@ -254,9 +264,6 @@ int read_audio_file_data(SNDFILE* file, SF_INFO* sf_info, dftt_config_t* dftt_co
 
         return 1;
     }
-
-    /* Assign to config var to be used later in the program */
-    dftt_conf->total_samples = sf_info->frames;
 
     return 0;
 }
@@ -311,21 +318,47 @@ void check_start_timer(dftt_config_t* dftt_conf) {
     }
 }
 
-size_t get_padded_size(size_t* size) 
+void expand_array(double** arr, size_t* new_size, size_t* old_size) {
+    *arr = realloc(*arr, *new_size * sizeof(double));
+
+    for (size_t i = *old_size; i < *new_size; i++) {
+        (*arr)[i] = 0.0f;
+    }
+
+}
+
+void set_transform_size(dftt_config_t* dftt_conf, double complex** X, double** x) {
+
+    /* Save temporarily for comparison later */
+    size_t temp_total_samples = dftt_conf->total_samples;
+
+    /* If using an FFT algo, round up size to next power of 2 */
+    if (dftt_conf->fft_flag) {
+        set_adjusted_size(&dftt_conf->total_samples);
+        if (!dftt_conf->quiet_flag) {
+            printf("Adjusted input data size.\n");
+        }
+    }
+
+    *X = calloc(dftt_conf->total_samples, sizeof(double complex));
+
+    if (temp_total_samples < dftt_conf->total_samples) {
+        expand_array(x, &dftt_conf->total_samples, &temp_total_samples);
+    }
+}
+
+void set_adjusted_size(size_t* size) 
 {
-    size_t padded_size;
     for (size_t i = 1; i < *size << 1; i <<= 1) {
 
         if (i >= *size) {
-            padded_size = i;
+            *size = i;
         }
 
     }
-
-    return padded_size;
 }
 
-void index_bit_reversal(size_t* n, uint32_t* arr) 
+void index_bit_reversal(size_t* n, size_t* arr) 
 {
     arr[0] = 0;
     arr[1] = 1;
@@ -346,7 +379,7 @@ void index_bit_reversal(size_t* n, uint32_t* arr)
 
 }
 
-void reorder_data(uint32_t* index_arr, double complex* data_arr, size_t* data_size)
+void reorder_data(size_t* index_arr, double complex* data_arr, size_t* data_size)
 {
     double* copy_arr = malloc(sizeof(double complex) * *data_size);
     for (size_t i = 0; i < *data_size; i++) {
@@ -370,13 +403,12 @@ double complex get_twiddle_factor(size_t* nk, size_t* N) {
     return w;
 }
 
-void dft(double complex** X, double* x, dftt_config_t* dftt_conf) {
+void dft(double complex* X, double* x, dftt_config_t* dftt_conf) {
     uint64_t n;                 // Sample index in time domain
     uint64_t k;                 // Sample index in frequency domain
     uint64_t N;                 // Total samples
-    
+
     N = dftt_conf->total_samples;
-    *X = malloc(sizeof(double complex) * dftt_conf->total_samples);
 
     if (!dftt_conf->quiet_flag) {
         printf("Calculating DFT.\n");
@@ -385,61 +417,61 @@ void dft(double complex** X, double* x, dftt_config_t* dftt_conf) {
     /* Calculate DFT */
     for (k = 0; k < N; k++) {
         for (n = 0; n < N; n++) { 
-            (*X)[k] += (x[n] * cos(2 * M_PI * n * k / N)) + (I * x[n] * sin(2 * M_PI * n * k / N));
+            X[k] += (x[n] * cos(2 * M_PI * n * k / N)) + (I * x[n] * sin(2 * M_PI * n * k / N));
         }
+    }
+
+    if (!dftt_conf->quiet_flag) {
+        printf("Finished.\n");
     }
 }
 
-void fft_radix2_dit(double complex** X, double* x, dftt_config_t* dftt_conf) {
+void fft_radix2_dit(double complex* X, double* x, dftt_config_t* dftt_conf) {
 
     if (!dftt_conf->quiet_flag) {
         printf("Calculating DFT using Radix-2 Decimation In Time.\n");
     }
 
-    /* Add padding to the size to make it a power of 2 and reallocate */
-    dftt_conf->padded_size = get_padded_size(&dftt_conf->total_samples);
-
-    /* Allocate the required size for the DFT array */
-    *X = calloc(dftt_conf->padded_size, sizeof(double complex));
-
     /* Create an array to convert the mono input to complex values */
-    double complex* x_mono_complex_copy = calloc(dftt_conf->padded_size, sizeof(double complex));
+    double complex* x_mono_complex_copy = calloc(dftt_conf->total_samples, sizeof(double complex));
     convert_to_complex(x, x_mono_complex_copy, &dftt_conf->total_samples);
 
     /* Get the array of the bit-reversed indexes */
-    uint32_t* index_arr = malloc(sizeof(uint32_t) * dftt_conf->padded_size);
-    index_bit_reversal(&dftt_conf->padded_size, index_arr);
+    size_t* index_arr = malloc(sizeof(size_t) * dftt_conf->total_samples);
+    index_bit_reversal(&dftt_conf->total_samples, index_arr);
 
     /* Re-order the data based on the bit-reversed indexes */
-    reorder_data(index_arr, x_mono_complex_copy, &dftt_conf->padded_size);
+    reorder_data(index_arr, x_mono_complex_copy, &dftt_conf->total_samples);
 
     /* Execute butterfly and twiddle factor calculations */
+    size_t k = dftt_conf->total_samples;
     double complex w, a, b;
-    for (size_t N = 2; N <= dftt_conf->padded_size; N *= 2) {
+    for (size_t N = 2; N <= k; N *= 2) {
 
         /* Counter j moves the point of where the N-size sequence starts */
-        for (size_t j = 0; j < dftt_conf->padded_size; j += N) {
+        for (size_t j = 0; j < k; j += N) {
 
             for (size_t n = j, nk = 0; n < j + (N/2); n++, nk++) {
                 a = x_mono_complex_copy[n];
                 b = x_mono_complex_copy[n + (N/2)];
                 w = get_twiddle_factor(&nk, &N);
 
-                (*X)[n] = a + b * w;
-                (*X)[n + (N/2)] = a - b * w;
+                X[n] = a + b * w;
+                X[n + (N/2)] = a - b * w;
             }
 
         }
 
         /* Using the input array to store the data to be used in the next loop */
-        for (size_t i = 0; i < dftt_conf->padded_size; i++) {
-            x_mono_complex_copy[i] = (*X)[i];
+        for (size_t i = 0; i < k; i++) {
+            x_mono_complex_copy[i] = X[i];
         }
 
     }
 
-    /* Set the total samples to be the new padded size for outputting later */
-    dftt_conf->total_samples = dftt_conf->padded_size;
+    if (!dftt_conf->quiet_flag) {
+        printf("Finished.\n");
+    }
 }
 
 void pow_spec(double complex* X, dftt_config_t* dftt_conf) {
@@ -447,7 +479,10 @@ void pow_spec(double complex* X, dftt_config_t* dftt_conf) {
         for (size_t i = 0; i < dftt_conf->total_samples; i++) {
             X[i] = (cabs(X[i]) * cabs(X[i]))/dftt_conf->total_samples;
         }
-        printf("Calculated power spectrum.\n");
+
+        if (!dftt_conf->quiet_flag) {
+            printf("Calculated power spectrum.\n");
+        }
     }
 }
 
@@ -503,8 +538,7 @@ void output_audio_file_info(SF_INFO* sf_info, dftt_config_t* dftt_conf) {
 
 void output_csv_file_string_info(dftt_config_t* dftt_conf) {
     if (dftt_conf->info_flag && !dftt_conf->quiet_flag) {
-        fprintf(stdout, "\n");
-        fprintf(stdout, "--INFO--\n");
+        fprintf(stdout, "\n--INFO--\n");
         fprintf(stdout, dftt_conf->input_flag == 'f' ? "File Name: %s\n" : "Input String: %s\n", dftt_conf->ifile);
         fprintf(stdout, "Samples: %lld\n", dftt_conf->total_samples);
         fprintf(stdout, dftt_conf->input_flag == 'f' ? "Format: CSV File\n" : "Format: CSV String\n");
@@ -550,7 +584,7 @@ int output_file_stdout(FILE** file, dftt_config_t* dftt_conf, double complex* X)
     if (!dftt_conf->quiet_flag) {
         fprintf(*file, "\n");
     }
-    
+
     char format[9];
     sprintf(format, "%%.%dlf", dftt_conf->precision);
 
@@ -726,7 +760,7 @@ void output_help() {
             "\t\t--input-csv <CSV File/String>\t= Path or name of the input csv file, or the input string. Must be separated by comma. Example input '1,0,0,1' or 'input.csv' containing '1,0,0,1'.\n"
             "\t-o,\t--output <File Name>\t\t= Path or name of the output file.\n"
             "\t-f,\t--output-format <Format>\t= Format of the output file. Select between: 'stdout', 'txt-line', 'csv', 'hex-dump', and 'c-array'.\n"
-            "\t-N,\t--dft-bins <Number>\t\t= Number of DFT bins.\n"
+            "\t-N,\t--total-samples <Number>\t\t= Set total number of samples to use when calculating. If using the FFT, it rounds up to the next power of 2 samples, zero-padding the signal if necessary.\n"
             "\t-p,\t--precision <Number>\t\t= Decimal number to define how many decimal places to output.\n"
             "\t\t--fft <Algo>\t\t\t= Use an FFT algorithm to compute the DFT. Selecte between 'radix2-dit'.\n"
             "\t\t--dft\t\t\t\t= Regular DFT calculation using Euler's formula to expand the summation. Default behaviour, included for completion.\n"

@@ -41,23 +41,22 @@ typedef struct DFTT_Config dftt_config_t;
 typedef struct DFTT_Config {
     char ifile[MAX_STR];
     char ofile[MAX_STR];
-    uint64_t dft_bins;
     uint8_t precision;
     uint8_t channels;
-    size_t padded_size; 
     size_t total_samples; 
 
     clock_t start_time;
     clock_t end_time;
 
     uint8_t info_flag;
+    uint8_t fft_flag;
     uint8_t timer_flag;
     uint8_t input_flag;
     uint8_t quiet_flag;
     uint8_t pow_flag;
 
     int (*inp)(double** x, dftt_config_t* dftt_conf);
-    void (*dft)(double _Complex** X, double* x_mono, dftt_config_t* dftt_conf);
+    void (*dft)(double _Complex* X, double* x_mono, dftt_config_t* dftt_conf);
     int (*outp)(FILE** file, dftt_config_t* dftt_conf, double _Complex* X);
 } dftt_config_t;
 
@@ -67,18 +66,19 @@ int read_audio_file_input(double** x, dftt_config_t* dftt_conf);
 int read_csv_string_file_input(double** x, dftt_config_t* dftt_conf);
 int open_audio_file(SNDFILE** file, SF_INFO* sf_info, dftt_config_t* dftt_conf);
 int open_csv_file(FILE** file, dftt_config_t* dftt_conf);
-int read_audio_file_data(SNDFILE* file, SF_INFO* sf_info, dftt_config_t* dftt_conf, double** x);
+int read_audio_file_data(SNDFILE* file, SF_INFO* sf_info, double** x);
 int read_csv_file_data(FILE* file, dftt_config_t* dftt_conf, char** data_string);
 int get_data_from_string(char* data_string, double** x, dftt_config_t* dftt_conf);
 int mix2mono(SF_INFO* sf_info, double* x, double** x_mono);
 void convert_to_complex(double* x, double _Complex* X_complex, size_t* size);
 void check_start_timer(dftt_config_t* dftt_conf);
-size_t get_padded_size(size_t* size);
-void index_bit_reversal(size_t* n, uint32_t* arr);
-void reorder_data(uint32_t* index_arr, double _Complex* data_arr, size_t* data_size);
-void dft(double _Complex** X, double* x, dftt_config_t* dftt_conf);
+void set_transform_size(dftt_config_t* dftt_conf, double _Complex** X, double** x);
+void set_adjusted_size(size_t* size);
+void index_bit_reversal(size_t* n, size_t* arr);
+void reorder_data(size_t* index_arr, double _Complex* data_arr, size_t* data_size);
+void dft(double _Complex* X, double* x, dftt_config_t* dftt_conf);
 double _Complex get_twiddle_factor(size_t* nk, size_t* N);
-void fft_radix2_dit(double _Complex** X, double* x, dftt_config_t* dftt_conf);
+void fft_radix2_dit(double _Complex* X, double* x, dftt_config_t* dftt_conf);
 void pow_spec(double _Complex* X, dftt_config_t* dftt_conf);
 void set_precision(double _Complex* X, dftt_config_t* dftt_conf);
 char* get_sndfile_major_format(SF_INFO* sf_info);

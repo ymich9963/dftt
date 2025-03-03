@@ -1,8 +1,7 @@
 #include "dftt.h"
 
 //TODO: Plotting?
-//TODO: Set how much padding to do
-//TODO: Bins
+//TODO: Bins. Add column for bin numbers on output to make output easier to read.
 //TODO: RadixM?
 
 int main (int argc, char** argv) {
@@ -23,11 +22,14 @@ int main (int argc, char** argv) {
     /* Initialise DFT result array */
     X = NULL;
 
+    /* Set the array sizes to be used in the DFT */
+    set_transform_size(&dftt_conf, &X, &x);
+
     /* Start the timer */
     check_start_timer(&dftt_conf);
 
     /* DFT */
-    dftt_conf.dft(&X, x, &dftt_conf);
+    dftt_conf.dft(X, x, &dftt_conf);
 
     /* Check if timer was activated and output time */
     check_end_timer_output(&dftt_conf);
