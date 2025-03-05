@@ -409,18 +409,12 @@ void index_bit_reversal(size_t* n, size_t* arr)
 
 void reorder_data(size_t* index_arr, double* data_arr, size_t* data_size)
 {
-    double* copy_arr = calloc(*data_size, sizeof(double));
-    if (copy_arr == NULL) {
-        fprintf(stderr, "\nUnable to reallocate DFT array.\n");
-    }
+    double copy_arr[*data_size];
+    memcpy(copy_arr, data_arr, sizeof(copy_arr));
 
-    for (size_t i = 0; i < *data_size; i++) {
-        copy_arr[i] = data_arr[i];
-    }
     for (size_t i = 0; i < *data_size; i++) {
         data_arr[i] = copy_arr[index_arr[i]];
     }
-    free(copy_arr);
 }
 
 void convert_to_complex(double* x, double complex* X_complex, size_t* size) {
@@ -466,15 +460,16 @@ void fft_radix2_dit(double complex* X, double* x, dftt_config_t* dftt_conf) {
     }
 
     /* Get the array of the bit-reversed indexes */
-    size_t* index_arr = calloc(dftt_conf->total_samples, sizeof(size_t));
+    size_t index_arr[dftt_conf->total_samples];
     index_bit_reversal(&dftt_conf->total_samples, index_arr);
 
     /* Re-order the data based on the bit-reversed indexes */
     reorder_data(index_arr, x, &dftt_conf->total_samples);
 
     /* Create an array to convert the mono input to complex values */
-    double complex* x_mono_complex_copy = calloc(dftt_conf->total_samples, sizeof(double complex));
+    double complex x_mono_complex_copy[dftt_conf->total_samples];
     convert_to_complex(x, x_mono_complex_copy, &dftt_conf->total_samples);
+    printf("here\n");
 
     /* Execute butterfly and twiddle factor calculations */
     size_t k = dftt_conf->total_samples;
@@ -505,9 +500,6 @@ void fft_radix2_dit(double complex* X, double* x, dftt_config_t* dftt_conf) {
     if (!dftt_conf->quiet_flag) {
         printf("Finished.\n");
     }
-
-    free(index_arr);
-    free(x_mono_complex_copy);
 }
 
 void pow_spec(double complex* X, dftt_config_t* dftt_conf) {

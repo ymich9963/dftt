@@ -1,7 +1,6 @@
 #include "dftt.h"
 
 //BUG: Issue when the input data size for an fft is >32.
-//.\build\dftt.exe --input-csv 1,0,0,1 --timer --info -f stdout -N 34. Sometimes gives nan?????????
 //TODO: Plotting?
 //TODO: RadixM?
 //TODO: Show sampling frequency in output info and use the new bin flag for outputting the bins
@@ -27,11 +26,6 @@ int main (int argc, char** argv) {
     /* Set the array sizes to be used in the DFT */
     set_transform_size(&dftt_conf, &X, &x);
 
-    /* printf("sample size: %lld\n", dftt_conf.total_samples);
-    for (size_t i = 0; i < dftt_conf.total_samples; i++) {
-        printf("%lf, ", x[i]);
-    }
-*/
     /* Start the timer */
     check_start_timer(&dftt_conf);
 
