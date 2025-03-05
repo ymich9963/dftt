@@ -2,16 +2,20 @@
 
 void set_defaults(dftt_config_t* dftt_conf) {
     strcpy(dftt_conf->ofile, "dftt.txt");
+
     dftt_conf->total_samples = 0;
     dftt_conf->detected_samples = 0;
     dftt_conf->channels = 1;
     dftt_conf->precision = 6;
     dftt_conf->sampling_freq = 0;
+
     dftt_conf->info_flag = 0;
     dftt_conf->fft_flag = 0;
     dftt_conf->timer_flag = 0;
     dftt_conf->quiet_flag = 0;
     dftt_conf->pow_flag = 0;
+    dftt_conf->bins_flag = 0;
+
     dftt_conf->inp = &read_audio_file_input;
     dftt_conf->dft = &dft;
     dftt_conf->outp = &output_file_stdout;
@@ -598,7 +602,7 @@ int select_outp(char* strval, dftt_config_t* dftt_conf) {
 }
 
 void show_freq_bin(FILE* file, dftt_config_t* dftt_conf, size_t* i, char separator[4]) {
-    if (!dftt_conf->sampling_freq) {
+    if (!dftt_conf->sampling_freq && dftt_conf->bins_flag) {
         fprintf(stderr, "\nPlease specify the sampling frequency of the data.\n");
         return;
     }
