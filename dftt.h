@@ -4,7 +4,6 @@
 #include <math.h>
 #include <complex.h>
 #include <time.h>
-#include <stdbool.h>
 
 #define MAX_STR 999
 #define WELCOME_STR "\nDiscrete Fourier Transform Tool (DFTT). Created by Yiannis Michael (ymich9963), 2025.\n\nUse '--version' for version information, or '--help' for the list of options.\n\nSimple usage, 'dftt <Audio File>'.\n\nUsing FFT, 'dftt <Audio File> --fft <FFT algorithm>.\n\n"
@@ -51,13 +50,12 @@ typedef struct DFTT_Config {
     clock_t start_time;
     clock_t end_time;
 
-    bool info_flag;
-    bool fft_flag;
-    bool timer_flag;
-    bool input_flag;
-    bool quiet_flag;
-    bool pow_flag;
-    bool bins_flag;
+    uint8_t info_flag;
+    uint8_t fft_flag;
+    uint8_t timer_flag;
+    uint8_t input_flag;
+    uint8_t quiet_flag;
+    uint8_t pow_flag;
 
     int (*inp)(double** x, dftt_config_t* dftt_conf);
     void (*dft)(double _Complex* X, double* x_mono, dftt_config_t* dftt_conf);
