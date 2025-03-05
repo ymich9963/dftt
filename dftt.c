@@ -86,7 +86,7 @@ int get_options(int* restrict argc, char** restrict argv, dftt_config_t* restric
             i++;
             continue;
         }
-        
+
         if (!(strcmp("-s", argv[i])) || !(strcmp("--sampling-frequency", argv[i]))) {
             CHECK_RES(sscanf(argv[i + 1], "%ld", &lval));
             dftt_conf->sampling_freq = lval; 
@@ -132,7 +132,7 @@ int get_options(int* restrict argc, char** restrict argv, dftt_config_t* restric
         }
 
         if (!(strcmp("-b", argv[i])) || !(strcmp("--show-bins", argv[i]))) {
-            dftt_conf->quiet_flag = 1; 
+            dftt_conf->bins_flag = 1; 
             continue;
         }
 
@@ -171,6 +171,9 @@ int read_audio_file_input(double** x, dftt_config_t* dftt_conf) {
     /* Output info on the inputted file */
     output_audio_file_info(&sf_info, dftt_conf);
 
+    if (!dftt_conf->sampling_freq) {
+        dftt_conf->sampling_freq = sf_info.samplerate;
+    }
     dftt_conf->detected_samples = sf_info.frames;
 
     return 0;
@@ -187,11 +190,11 @@ int read_csv_string_file_input(double** x, dftt_config_t* dftt_conf) {
     /* Try to open and read input file, if not then it's considered a data string */
     if (!(open_csv_file(&file, dftt_conf))) {
         CHECK_ERR(read_csv_file_data(file, dftt_conf, &data_string));
-        dftt_conf->input_flag = 'f';
+        dftt_conf->input_flag = 0;
     } else {
         data_string = malloc(sizeof(char) * strlen(dftt_conf->ibuff)); 
         strcpy(data_string, dftt_conf->ibuff);
-        dftt_conf->input_flag = 's';
+        dftt_conf->input_flag = 1;
     }
 
     get_data_from_string(data_string, x, dftt_conf);
@@ -469,7 +472,6 @@ void fft_radix2_dit(double complex* X, double* x, dftt_config_t* dftt_conf) {
     /* Create an array to convert the mono input to complex values */
     double complex x_mono_complex_copy[dftt_conf->total_samples];
     convert_to_complex(x, x_mono_complex_copy, &dftt_conf->total_samples);
-    printf("here\n");
 
     /* Execute butterfly and twiddle factor calculations */
     size_t k = dftt_conf->total_samples;
@@ -544,7 +546,7 @@ void output_audio_file_info(SF_INFO* sf_info, dftt_config_t* dftt_conf) {
     if (dftt_conf->info_flag && !dftt_conf->quiet_flag) {
         fprintf(stdout, "\n--INFO--\n");
         fprintf(stdout, "File Name: %s\n", dftt_conf->ibuff);
-        fprintf(stdout, "Sample Rate: %d\n", sf_info->samplerate);
+        fprintf(stdout, "Sample Rate: %lld\n", dftt_conf->sampling_freq);
         fprintf(stdout, "Samples: %lld\n", sf_info->frames);
         fprintf(stdout, "Channels: %d\n", sf_info->channels);
         fprintf(stdout, "Format: %s\n", get_sndfile_major_format(sf_info));
@@ -556,9 +558,9 @@ void output_audio_file_info(SF_INFO* sf_info, dftt_config_t* dftt_conf) {
 void output_csv_file_string_info(dftt_config_t* dftt_conf) {
     if (dftt_conf->info_flag && !dftt_conf->quiet_flag) {
         fprintf(stdout, "\n--INFO--\n");
-        fprintf(stdout, dftt_conf->input_flag == 'f' ? "File Name: %s\n" : "Input String: %s\n", dftt_conf->ibuff);
+        fprintf(stdout, !dftt_conf->input_flag ? "File Name: %s\n" : "Input String: %s\n", dftt_conf->ibuff);
         fprintf(stdout, "Samples: %lld\n", dftt_conf->total_samples);
-        fprintf(stdout, dftt_conf->input_flag == 'f' ? "Format: CSV File\n" : "Format: CSV String\n");
+        fprintf(stdout, !dftt_conf->input_flag ? "Format: CSV File\n" : "Format: CSV String\n");
         fprintf(stdout, "--------\n\n");
     }
 }
@@ -595,11 +597,16 @@ int select_outp(char* strval, dftt_config_t* dftt_conf) {
     }
 }
 
-void show_freq_bin(dftt_config_t* dftt_conf, size_t* i, char separator[4]) {
-    if (dftt_conf->sampling_freq) {
+void show_freq_bin(FILE* file, dftt_config_t* dftt_conf, size_t* i, char separator[4]) {
+    if (!dftt_conf->sampling_freq) {
+        fprintf(stderr, "\nPlease specify the sampling frequency of the data.\n");
+        return;
+    }
+
+    if (dftt_conf->bins_flag) {
         size_t bin = *i * dftt_conf->sampling_freq / dftt_conf->total_samples;
-        printf("%lld", bin);
-        printf("%s", separator);
+        fprintf(file, "%lld", bin);
+        fprintf(file, "%s", separator);
     }
 }
 
@@ -616,7 +623,7 @@ int output_file_stdout(FILE** file, dftt_config_t* dftt_conf, double complex* X)
     if (dftt_conf->pow_flag) {
 
         for (size_t i = 0; i < dftt_conf->total_samples; i++) {
-            show_freq_bin(dftt_conf, &i, " | ");
+            show_freq_bin(*file, dftt_conf, &i, ":\t");
             fprintf(*file, format, creal(X[i]));
             fprintf(*file, "\n");
         }
@@ -624,7 +631,7 @@ int output_file_stdout(FILE** file, dftt_config_t* dftt_conf, double complex* X)
     } else {
 
         for (size_t i = 0; i < dftt_conf->total_samples; i++) {
-            show_freq_bin(dftt_conf, &i, " | ");
+            show_freq_bin(*file, dftt_conf, &i, ":\t");
             fprintf(*file, format, creal(X[i]));
             fprintf(*file, cimag(X[i]) >= 0 ? " + " : " - ");
             fprintf(*file, "j");
@@ -651,13 +658,13 @@ int output_file_txt_line(FILE** file, dftt_config_t* dftt_conf, double complex* 
 
     if (dftt_conf->pow_flag) {
         for (size_t i = 0; i < dftt_conf->total_samples; i++){
-            show_freq_bin(dftt_conf, &i, " | ");
+            show_freq_bin(*file, dftt_conf, &i, ":\t");
             fprintf(*file, format, creal(X[i]));
             fprintf(*file, "\n");
         }
     } else {
         for (size_t i = 0; i < dftt_conf->total_samples; i++){
-            show_freq_bin(dftt_conf, &i, " | ");
+            show_freq_bin(*file, dftt_conf, &i, ":\t");
             fprintf(*file, format, creal(X[i]));
             fprintf(*file, cimag(X[i]) >= 0 ? " + " : " - ");
             fprintf(*file, "j");
@@ -686,16 +693,16 @@ int output_file_csv(FILE** file, dftt_config_t* dftt_conf, double complex* X) {
     sprintf(format, "%%.%dlf", dftt_conf->precision);
 
     if (dftt_conf->pow_flag) {
-        fprintf(*file, dftt_conf->sampling_freq > 0 ? "Bin,Pow" : "Pow\n");
+        fprintf(*file, dftt_conf->sampling_freq > 0 ? "Bin,Pow\n" : "Pow\n");
         for (size_t i = 0; i < dftt_conf->total_samples; i++){
-            show_freq_bin(dftt_conf, &i, ",");
+            show_freq_bin(*file, dftt_conf, &i, ",");
             fprintf(*file, format, creal(X[i]));
             fprintf(*file, "\n");
         }
     } else {
-        fprintf(*file, dftt_conf->sampling_freq > 0 ? "Bin,Real,Imag" :"Real, Imag\n");
+        fprintf(*file, dftt_conf->sampling_freq > 0 ? "Bin,Real,Imag\n" :"Real,Imag\n");
         for (size_t i = 0; i < dftt_conf->total_samples; i++){
-            show_freq_bin(dftt_conf, &i, ",");
+            show_freq_bin(*file, dftt_conf, &i, ",");
             fprintf(*file, format, creal(X[i]));
             fprintf(*file, ",");
             fprintf(*file, format, cimag(X[i]));
@@ -787,12 +794,14 @@ void output_help() {
             "\t-f,\t--output-format <Format>\t= Format of the output file. Select between: 'stdout', 'txt-line', 'csv', 'hex-dump', and 'c-array'.\n"
             "\t-N,\t--total-samples <Number>\t\t= Set total number of samples to use when calculating. If using the FFT, it rounds up to the next power of 2 samples, zero-padding the signal if necessary.\n"
             "\t-p,\t--precision <Number>\t\t= Decimal number to define how many decimal places to output.\n"
+            "\t-s,\t--sampling-frequency <Number>\t= Specify sampling frequency, only used when showing the frequency bins.\n"
+            "\t-q,\t--quiet\t\t\t\t= Silence all status messages to stdout. Overwrites '--timer' and '--info'.\n"
+            "\t-b,\t--show-bins\t\t\t= Show the frequency bins in the output.\n"
+            "\t-p,\t--power-spectrum\t\t= Output the power spectrum instead of the DFT itself.\n"
             "\t\t--fft <Algo>\t\t\t= Use an FFT algorithm to compute the DFT. Selecte between 'radix2-dit'.\n"
             "\t\t--dft\t\t\t\t= Regular DFT calculation using Euler's formula to expand the summation. Default behaviour, included for completion.\n"
             "\t\t--timer\t\t\t\t= Start a timer to see how long the calculation takes.\n"
             "\t\t--info\t\t\t\t= Output to stdout some info about the input file.\n"
-            "\t-q,\t--quiet\t\t\t\t= Silence all status messages to stdout. Overwrites '--timer' and '--info'.\n"
-            "\t-p,\t--power-spectrum\t\t= Output the power spectrum instead of the DFT itself.\n"
             "\n"
           );
 }

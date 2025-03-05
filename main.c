@@ -1,6 +1,5 @@
 #include "dftt.h"
 
-//BUG: Issue when the input data size for an fft is >32.
 //TODO: Plotting?
 //TODO: RadixM?
 //TODO: Show sampling frequency in output info and use the new bin flag for outputting the bins
