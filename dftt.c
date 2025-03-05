@@ -132,7 +132,7 @@ int get_options(int* restrict argc, char** restrict argv, dftt_config_t* restric
         }
 
         if (!(strcmp("-b", argv[i])) || !(strcmp("--show-bins", argv[i]))) {
-            dftt_conf->quiet_flag = 1; 
+            dftt_conf->bins_flag = 1; 
             continue;
         }
 
@@ -171,6 +171,9 @@ int read_audio_file_input(double** x, dftt_config_t* dftt_conf) {
     /* Output info on the inputted file */
     output_audio_file_info(&sf_info, dftt_conf);
 
+    if (!dftt_conf->sampling_freq) {
+        dftt_conf->sampling_freq = sf_info.samplerate;
+    }
     dftt_conf->detected_samples = sf_info.frames;
 
     return 0;
@@ -187,11 +190,11 @@ int read_csv_string_file_input(double** x, dftt_config_t* dftt_conf) {
     /* Try to open and read input file, if not then it's considered a data string */
     if (!(open_csv_file(&file, dftt_conf))) {
         CHECK_ERR(read_csv_file_data(file, dftt_conf, &data_string));
-        dftt_conf->input_flag = 'f';
+        dftt_conf->input_flag = 0;
     } else {
         data_string = malloc(sizeof(char) * strlen(dftt_conf->ibuff)); 
         strcpy(data_string, dftt_conf->ibuff);
-        dftt_conf->input_flag = 's';
+        dftt_conf->input_flag = 1;
     }
 
     get_data_from_string(data_string, x, dftt_conf);
@@ -544,7 +547,7 @@ void output_audio_file_info(SF_INFO* sf_info, dftt_config_t* dftt_conf) {
     if (dftt_conf->info_flag && !dftt_conf->quiet_flag) {
         fprintf(stdout, "\n--INFO--\n");
         fprintf(stdout, "File Name: %s\n", dftt_conf->ibuff);
-        fprintf(stdout, "Sample Rate: %d\n", sf_info->samplerate);
+        fprintf(stdout, "Sample Rate: %lld\n", dftt_conf->sampling_freq);
         fprintf(stdout, "Samples: %lld\n", sf_info->frames);
         fprintf(stdout, "Channels: %d\n", sf_info->channels);
         fprintf(stdout, "Format: %s\n", get_sndfile_major_format(sf_info));
@@ -556,9 +559,9 @@ void output_audio_file_info(SF_INFO* sf_info, dftt_config_t* dftt_conf) {
 void output_csv_file_string_info(dftt_config_t* dftt_conf) {
     if (dftt_conf->info_flag && !dftt_conf->quiet_flag) {
         fprintf(stdout, "\n--INFO--\n");
-        fprintf(stdout, dftt_conf->input_flag == 'f' ? "File Name: %s\n" : "Input String: %s\n", dftt_conf->ibuff);
+        fprintf(stdout, !dftt_conf->input_flag ? "File Name: %s\n" : "Input String: %s\n", dftt_conf->ibuff);
         fprintf(stdout, "Samples: %lld\n", dftt_conf->total_samples);
-        fprintf(stdout, dftt_conf->input_flag == 'f' ? "Format: CSV File\n" : "Format: CSV String\n");
+        fprintf(stdout, !dftt_conf->input_flag ? "Format: CSV File\n" : "Format: CSV String\n");
         fprintf(stdout, "--------\n\n");
     }
 }
@@ -787,12 +790,13 @@ void output_help() {
             "\t-f,\t--output-format <Format>\t= Format of the output file. Select between: 'stdout', 'txt-line', 'csv', 'hex-dump', and 'c-array'.\n"
             "\t-N,\t--total-samples <Number>\t\t= Set total number of samples to use when calculating. If using the FFT, it rounds up to the next power of 2 samples, zero-padding the signal if necessary.\n"
             "\t-p,\t--precision <Number>\t\t= Decimal number to define how many decimal places to output.\n"
+            "\t-s,\t--sampling-frequency <Number>\t= Specify sampling frequency, only used when showing the frequency bins.\n"
+            "\t-q,\t--quiet\t\t\t\t= Silence all status messages to stdout. Overwrites '--timer' and '--info'.\n"
+            "\t-p,\t--power-spectrum\t\t= Output the power spectrum instead of the DFT itself.\n"
             "\t\t--fft <Algo>\t\t\t= Use an FFT algorithm to compute the DFT. Selecte between 'radix2-dit'.\n"
             "\t\t--dft\t\t\t\t= Regular DFT calculation using Euler's formula to expand the summation. Default behaviour, included for completion.\n"
             "\t\t--timer\t\t\t\t= Start a timer to see how long the calculation takes.\n"
             "\t\t--info\t\t\t\t= Output to stdout some info about the input file.\n"
-            "\t-q,\t--quiet\t\t\t\t= Silence all status messages to stdout. Overwrites '--timer' and '--info'.\n"
-            "\t-p,\t--power-spectrum\t\t= Output the power spectrum instead of the DFT itself.\n"
             "\n"
           );
 }
