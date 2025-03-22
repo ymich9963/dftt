@@ -1,14 +1,16 @@
 #include "dftt.h"
 
-//TODO: Plotting?
-//TODO: RadixM?
-//TODO: Show sampling frequency in output info and use the new bin flag for outputting the bins
+//TODO: Plotting? Create a dfttplot? Figure out gnuplot?
+//TODO: RadixM? Decimation in frequency?
+//TODO: FFTshift with also shifting the bins
+//TODO: Make hamming window to reduce spectral leakage which is when the audio file suddenly starts or ends
+//TODO: Add auto-naming of files from the twc project
 
 int main (int argc, char** argv) {
-    double* x;              // Input data
-    FILE * ofile;           // Output file pointer
-    double complex* X;      // Fourier Transform result
-    dftt_config_t dftt_conf; // Tool config
+    double* x;                  // Input data
+    double complex* X = NULL;   // Fourier Transform result
+    double** X_RIB = NULL;      // Array containing the real, and imaginary data, and frequency bins.
+    dftt_config_t dftt_conf;    // Tool config
 
     /* Set defaults to ensure certain behaviour */
     set_defaults(&dftt_conf);
@@ -17,10 +19,7 @@ int main (int argc, char** argv) {
     CHECK_ERR(get_options(&argc, argv, &dftt_conf));
 
     /* Execute the read input function  */
-    CHECK_ERR(dftt_conf.inp(&x, &dftt_conf));
-
-    /* Initialise DFT result array */
-    X = NULL;
+    CHECK_ERR(dftt_conf.inp(&dftt_conf, &x));
 
     /* Set the array sizes to be used in the DFT */
     set_transform_size(&dftt_conf, &X, &x);
@@ -29,21 +28,22 @@ int main (int argc, char** argv) {
     check_start_timer(&dftt_conf);
 
     /* DFT */
-    dftt_conf.dft(X, x, &dftt_conf);
+    dftt_conf.dft(&dftt_conf, X, x);
 
     /* Check if timer was activated and output time */
     check_end_timer_output(&dftt_conf);
 
-    /* Calculate power spectrum if selected */
-    pow_spec(X, &dftt_conf);
+    /* Dissects the complex values array into frequency bins, real, and imaginary numbers */
+    dissect_complex_arr(X, &X_RIB, dftt_conf.total_samples);
 
-    /* Initialise outuput buffer and output the DFT array */
-    ofile = NULL;
-    dftt_conf.outp(&ofile, &dftt_conf, X);
+    prep_outp(&dftt_conf, X_RIB);
 
-    fclose(ofile);
+    /* Output the DFT array */
+    dftt_conf.outp(&dftt_conf, X_RIB);
+
     free(x);
     free(X);
+    free(X_RIB);
 
     return 0;
 }
