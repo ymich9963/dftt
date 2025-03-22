@@ -528,7 +528,6 @@ void index_bit_reversal(size_t* index_arr, size_t n)
         }
 
     }
-
 }
 
 void reorder_data(size_t* index_arr, double* data_arr, size_t data_size)
@@ -564,9 +563,7 @@ void dft(dftt_config_t* dftt_conf, double complex* X, double* x)
 
     N = dftt_conf->total_samples;
 
-    if (!dftt_conf->quiet_flag) {
-        printf("Calculating DFT.\n");
-    }
+    CHECK_QUIET(dftt_conf->quiet_flag, "Calculating DFT.\n");
 
     /* Calculate DFT */
     for (k = 0; k < N; k++) {
@@ -575,31 +572,11 @@ void dft(dftt_config_t* dftt_conf, double complex* X, double* x)
         }
     }
 
-    if (!dftt_conf->quiet_flag) {
-        printf("Finished.\n");
-    }
+    CHECK_QUIET(dftt_conf->quiet_flag, "Finished.\n");
 }
 
-void fft_radix2_dit(dftt_config_t* dftt_conf, double complex* X, double* x)
+void butterfly(double complex* X, double complex* x_mono_complex_copy, size_t k)
 {
-
-    if (!dftt_conf->quiet_flag) {
-        printf("Calculating DFT using Radix-2 Decimation In Time.\n");
-    }
-
-    /* Get the array of the bit-reversed indexes */
-    size_t index_arr[dftt_conf->total_samples];
-    index_bit_reversal(index_arr, dftt_conf->total_samples);
-
-    /* Re-order the data based on the bit-reversed indexes */
-    reorder_data(index_arr, x, dftt_conf->total_samples);
-
-    /* Create an array to convert the mono input to complex values */
-    double complex x_mono_complex_copy[dftt_conf->total_samples];
-    convert_to_complex(x, x_mono_complex_copy, dftt_conf->total_samples);
-
-    /* Execute butterfly and twiddle factor calculations */
-    size_t k = dftt_conf->total_samples;
     double complex w, a, b;
     for (size_t N = 2; N <= k; N *= 2) {
 
@@ -623,10 +600,34 @@ void fft_radix2_dit(dftt_config_t* dftt_conf, double complex* X, double* x)
         }
 
     }
+}
 
-    if (!dftt_conf->quiet_flag) {
-        printf("Finished.\n");
-    }
+void fft_radix2_dit(dftt_config_t* dftt_conf, double complex* X, double* x)
+{
+    CHECK_QUIET(dftt_conf->quiet_flag, "Calculating DFT using Radix-2 Decimation In Time.\n");
+
+    /* Get the array of the bit-reversed indexes */
+    size_t index_arr[dftt_conf->total_samples];
+    index_bit_reversal(index_arr, dftt_conf->total_samples);
+    CHECK_QUIET(dftt_conf->quiet_flag, "Generated bit-reversed index array.\n");
+
+    //BUG: Seems to need a small delay between these functions sometimes?
+    for (size_t i = 0; i < dftt_conf->total_samples; i++);
+
+    /* Re-order the data based on the bit-reversed indexes */
+    reorder_data(index_arr, x, dftt_conf->total_samples);
+    CHECK_QUIET(dftt_conf->quiet_flag, "Re-ordered data based on the new index array.\n");
+
+    /* Create an array to convert the mono input to complex values */
+    double complex x_mono_complex_copy[dftt_conf->total_samples];
+    convert_to_complex(x, x_mono_complex_copy, dftt_conf->total_samples);
+    CHECK_QUIET(dftt_conf->quiet_flag, "Converted mono input to complex values.\n");
+
+    /* Execute butterfly and twiddle factor calculations */
+    butterfly(X, x_mono_complex_copy, dftt_conf->total_samples);
+    CHECK_QUIET(dftt_conf->quiet_flag, "Executed butterfly procedure.\n");
+
+    CHECK_QUIET(dftt_conf->quiet_flag, "Finished.\n");
 }
 
 int get_freq_bins(double* X_bins, size_t f_s, size_t size)
@@ -688,22 +689,39 @@ void normalise_data(double* x, size_t size)
     }
 }
 
-// FIX: Something wrong with this!
 void fft_shift(double** X_RIB, size_t size)
 {
-    double half_copy[size/2];
+    double copy[3][size];
     for (int data_i = 0; data_i < 3; data_i++) {
         for (size_t i = 0; i < size; i++) {
-            half_copy[i] = X_RIB[data_i][i];
-            X_RIB[data_i][i] = X_RIB[data_i][i + size/2];
-            X_RIB[data_i][i + size/2] = half_copy[i];
+            copy[data_i][i] = X_RIB[data_i][i];
+        }
+
+        /* Check if even size */
+        if (!(size % 2)) {
+            for (size_t i = 0; i < size/2; i++) {
+                X_RIB[data_i][i + size/2] = copy[data_i][i];
+            }
+            for (size_t i = size/2; i < size; i++) {
+                X_RIB[data_i][i - size/2] = copy[data_i][i];
+            }
+        } else {
+            for (size_t i = 0; i < size/2 + 1; i++) {
+                X_RIB[data_i][i + size/2] = copy[data_i][i];
+            }
+            for (size_t i = size/2 - 1; i < size; i++) {
+                X_RIB[data_i][i - size/2 - 1] = copy[data_i][i];
+            }
         }
     }
 
-    double x = 0.0f;
-    for (size_t i = 0; i < size/2; i++) {
-        x = X_RIB[FREQ_BINS_INDEX][i];
-        X_RIB[FREQ_BINS_INDEX][i] = -x - (size_t)(size/2);
+    double f_s = 2*X_RIB[FREQ_BINS_INDEX][0];
+    for (size_t i = 0; i < size; i++) {
+        /* If the loop reaches the 0 bin, exit */
+        if (X_RIB[FREQ_BINS_INDEX][i] == 0) {
+            break;
+        } 
+        X_RIB[FREQ_BINS_INDEX][i] -= f_s;
     }
 }
 
@@ -714,44 +732,35 @@ void prep_outp(dftt_config_t* dftt_conf, double** X_RIB)
     /* Calculate power spectrum */
     if (dftt_conf->pow_flag) {
         get_pow_spectrum(X_RIB[REAL_DATA_INDEX], X_RIB[IMAG_DATA_INDEX], dftt_conf->total_samples);
-        if (!dftt_conf->quiet_flag) {
-            printf("Calculated power spectrum.\n");
-        }
+        CHECK_QUIET(dftt_conf->quiet_flag, "Calculated power spectrum.\n");
     }
 
     if (dftt_conf->norm_flag && dftt_conf->pow_flag) {
         normalise_data(X_RIB[REAL_DATA_INDEX], dftt_conf->total_samples);
-        if (!dftt_conf->quiet_flag) {
-            printf("Normalised the data.\n");
-        }
+        CHECK_QUIET(dftt_conf->quiet_flag, "Normalised the data.\n");
     }
 
     if (dftt_conf->bins_flag) {
         get_freq_bins(X_RIB[FREQ_BINS_INDEX], dftt_conf->sampling_freq, dftt_conf->total_samples);
-        if (!dftt_conf->quiet_flag) {
-            printf("Calculated frequency bins.\n");
-        }
+        CHECK_QUIET(dftt_conf->quiet_flag, "Calculated frequency bins.\n");
     }
 
     if (dftt_conf->shift_flag) {
         fft_shift(X_RIB, dftt_conf->total_samples);
-        if (!dftt_conf->quiet_flag) {
-            printf("Shifted the result to be between -N/2 and N/2.\n");
-        }
+        CHECK_QUIET(dftt_conf->quiet_flag, "Shifted the result to be between -N/2 and N/2.\n");
     }
 
     if (dftt_conf->half_flag) {
         dftt_conf->total_samples = dftt_conf->total_samples / 2;
-        if (!dftt_conf->quiet_flag) {
-            printf("Will only output up to N/2.\n");
-        }
+        CHECK_QUIET(dftt_conf->quiet_flag, "Will only output up to N/2.\n");
     }
 }
 
+//TODO: Add optional precision for frequency bins
 void print_freq_bin(FILE* file, double freq_bin, bool bins_flag, char separator[4])
 {
     if (bins_flag) {
-        fprintf(file, "%lld%s", (size_t)freq_bin, separator);
+        fprintf(file, "%.0f%s", freq_bin, separator);
     }
 }
 
@@ -802,6 +811,24 @@ int output_file_txt_line(dftt_config_t* dftt_conf, double** X_RIB)
     return 0;
 }
 
+//TODO: Probably could make this better
+void print_csv_headings(FILE* file, bool bins_flag, bool pow_flag)
+{
+    if (!bins_flag && !pow_flag) {
+       fprintf(file, "Real,Imag"); 
+    }
+    if (bins_flag && !pow_flag) {
+       fprintf(file, "Bins,Real,Imag"); 
+    }
+    if (bins_flag && pow_flag) {
+       fprintf(file, "Bins,Pow"); 
+    }
+    if (!bins_flag && pow_flag) {
+       fprintf(file, "Pow"); 
+    }
+    fprintf(file, "\n"); 
+}
+
 int output_file_csv(dftt_config_t* dftt_conf, double** X_RIB)
 {
     FILE* file = fopen(dftt_conf->ofile, "w");
@@ -811,6 +838,8 @@ int output_file_csv(dftt_config_t* dftt_conf, double** X_RIB)
         return 1;
     };
 
+    print_csv_headings(file, dftt_conf->bins_flag, dftt_conf->pow_flag);
+
     for (size_t i = 0; i < dftt_conf->total_samples; i++) {
         print_freq_bin(file, X_RIB[FREQ_BINS_INDEX][i], dftt_conf->bins_flag, ",");
         fprintf(file, dftt_conf->format, X_RIB[REAL_DATA_INDEX][i]);
@@ -819,6 +848,10 @@ int output_file_csv(dftt_config_t* dftt_conf, double** X_RIB)
             fprintf(file, dftt_conf->format, X_RIB[IMAG_DATA_INDEX][i]);
         }
         fprintf(file, "\n");
+    }
+
+    if (!dftt_conf->quiet_flag) {
+        printf("Outputted data to '%s'.\n", dftt_conf->ofile);
     }
 
     fclose(file);
@@ -893,7 +926,7 @@ void check_end_timer_output(dftt_config_t* dftt_conf)
 {
     if (dftt_conf->timer_flag && !dftt_conf->quiet_flag) {
         dftt_conf->end_time = clock() - dftt_conf->start_time;
-        printf("Time taken: %.4lf seconds\n", (float) dftt_conf->end_time/CLOCKS_PER_SEC);
+        printf("Time taken: %.3lf seconds\n", (float) dftt_conf->end_time/CLOCKS_PER_SEC);
     }
 }
 
@@ -916,8 +949,8 @@ void output_help()
             "\t-q,\t--quiet\t\t\t\t= Silence all status messages to stdout. Overwrites '--timer' and '--info'.\n"
             "\t-b,\t--show-bins\t\t\t= Show the frequency bins in the output.\n"
             "\t--pow,\t--power-spectrum\t\t= Output the power spectrum instead of the DFT itself.\n"
-            "\t--half,\t--output-half\t\t= Output only half of the result.\n"
-            "\t--shift,\t--fft-shift\t\t= Shift the result between -N/2 and N/2.\n"
+            "\t--half,\t--output-half\t\t\t= Output only half of the result.\n"
+            "\t--shift,--fft-shift\t\t\t= Shift the result between -N/2 and N/2.\n"
             "\n"
           );
 }

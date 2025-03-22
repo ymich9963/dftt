@@ -1,7 +1,7 @@
 OBJECTS := main.o dftt.o
 BUILD_DIR := ./build
 TARGET := dftt
-CFLAGS := -Wall -O3
+CFLAGS := -Wall -O1
 LIB := -lsndfile
 CC := clang
 

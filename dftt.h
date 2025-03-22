@@ -35,6 +35,12 @@
 						} \
 					  })
 
+/* Check the quiet flag and output a simple sting */
+#define	CHECK_QUIET(x, string) ({ if ((!x)) { \
+                            printf(string); \
+						} \
+					  })
+
 extern char* snd_subtype_arr_desc[SND_SUBTYPE_NUM];
 extern uint32_t snd_subtype_arr[SND_SUBTYPE_NUM];
 extern char* snd_format_arr_desc[SND_MAJOR_FORMAT_NUM];
@@ -99,11 +105,13 @@ void reorder_data(size_t* index_arr, double* data_arr, size_t data_size);
 void convert_to_complex(double* x, double _Complex* X_complex, size_t size);
 double _Complex get_twiddle_factor(size_t nk, size_t N);
 void dft(dftt_config_t* dftt_conf, double _Complex* X, double* x);
+void butterfly(double _Complex* X, double _Complex* x_mono_complex_copy, size_t k);
 void fft_radix2_dit(dftt_config_t* dftt_conf, double _Complex* X, double* x);
 void dissect_complex_arr(double _Complex* X, double*** X_RIB, size_t size);
 void prep_outp(dftt_config_t* dftt_conf, double** X_RIB);
 int output_file_stdout(dftt_config_t* dftt_conf, double** X_RIB);
 int output_file_txt_line(dftt_config_t* dftt_conf, double** X_RIB);
+void print_csv_headings(FILE* file, bool bins_flag, bool pow_flag);
 int output_file_csv(dftt_config_t* dftt_conf, double** X_RIB);
 int output_file_hex_dump(dftt_config_t* dftt_conf, double** X_RIB);
 int output_file_c_array(dftt_config_t* dftt_conf, double** X_RIB);
