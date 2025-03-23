@@ -22,6 +22,7 @@ void set_defaults(dftt_config_t* dftt_conf)
     dftt_conf->shift_flag = 0;
 
     dftt_conf->inp = &read_audio_file_input;
+    dftt_conf->w = &window_rectangular;
     dftt_conf->dft = &dft;
     dftt_conf->outp = &output_file_stdout;
 }
@@ -111,6 +112,13 @@ int get_options(int* restrict argc, char** restrict argv, dftt_config_t* restric
             continue;
         }
 
+        if (!(strcmp("-w", argv[i])) || !(strcmp("--window", argv[i]))) {
+            CHECK_RES(sscanf(argv[i + 1], "%s", strval));
+            CHECK_RET(select_windowing(dftt_conf, strval));
+            i++;
+            continue;
+        }
+
         if (!(strcmp("--fft", argv[i]))) {
             CHECK_RES(sscanf(argv[i + 1], "%s", strval));
             CHECK_RET(select_fft_algo(dftt_conf, strval));
@@ -172,6 +180,39 @@ int get_options(int* restrict argc, char** restrict argv, dftt_config_t* restric
     }
 
     return 0;
+}
+
+int select_outp(dftt_config_t* dftt_conf, char* strval)
+{
+    if(!(strcmp("stdout", strval))) {
+        dftt_conf->outp = &output_file_stdout; 
+
+        return 0;
+    }
+    if(!(strcmp("txt-line", strval))) {
+        dftt_conf->outp = &output_file_txt_line; 
+
+        return 0;
+    }
+    if(!(strcmp("csv", strval))) {
+        dftt_conf->outp = &output_file_csv; 
+
+        return 0;
+    }
+    if(!(strcmp("hex-dump", strval))) {
+        dftt_conf->outp = &output_file_hex_dump; 
+
+        return 0;
+    }
+    if(!(strcmp("c-array", strval))) {
+        dftt_conf->outp = &output_file_c_array; 
+
+        return 0;
+    } else {
+        fprintf(stderr, "\nOutput method not available.\n");
+
+        return 1;
+    }
 }
 
 int read_audio_file_input(dftt_config_t* dftt_conf, double** x)
@@ -247,39 +288,6 @@ void output_audio_file_info(dftt_config_t* dftt_conf, SF_INFO* sf_info)
         fprintf(stdout, "Format: %s\n", get_sndfile_major_format(sf_info));
         fprintf(stdout, "Subtype: %s\n", get_sndfile_subtype(sf_info));
         fprintf(stdout, "---\n\n");
-    }
-}
-
-int select_outp(dftt_config_t* dftt_conf, char* strval)
-{
-    if(!(strcmp("stdout", strval))) {
-        dftt_conf->outp = &output_file_stdout; 
-
-        return 0;
-    }
-    if(!(strcmp("txt-line", strval))) {
-        dftt_conf->outp = &output_file_txt_line; 
-
-        return 0;
-    }
-    if(!(strcmp("csv", strval))) {
-        dftt_conf->outp = &output_file_csv; 
-
-        return 0;
-    }
-    if(!(strcmp("hex-dump", strval))) {
-        dftt_conf->outp = &output_file_hex_dump; 
-
-        return 0;
-    }
-    if(!(strcmp("c-array", strval))) {
-        dftt_conf->outp = &output_file_c_array; 
-
-        return 0;
-    } else {
-        fprintf(stderr, "\nOutput method not available.\n");
-
-        return 1;
     }
 }
 
@@ -414,9 +422,66 @@ void output_csv_file_string_info(dftt_config_t* dftt_conf)
     }
 }
 
+int select_windowing(dftt_config_t* dftt_conf, char* strval)
+{
+    if (!(strcmp("rectangular", strval))) {
+        dftt_conf->w = &window_rectangular;
+    }
+    if (!(strcmp("hanning", strval))) {
+        dftt_conf->w = &window_hanning;
+    }
+    if (!(strcmp("hamming", strval))) {
+        dftt_conf->w = &window_hamming;
+    }
+    if (!(strcmp("blackman", strval))) {
+        dftt_conf->w = &window_blackman;
+    } else {
+        fprintf(stderr, "\nWindowing function not implemented. Exiting...\n\n");
+        return 1;
+    }
+    return 0;
+}
+
+int window_rectangular(dftt_config_t* dftt_conf, double* x)
+{
+    /* Do nothing to simulate a rectangualr window of w[n] = 1 */
+    CHECK_QUIET(dftt_conf->quiet_flag, "Used a rectangular window\n");
+
+    return 0;
+}
+
+int window_hanning(dftt_config_t* dftt_conf, double* x)
+{
+    for (size_t n = 0; n < dftt_conf->detected_samples; n++) {
+        x[n] *= 0.5 - (0.5 * cos((2 * M_PI * n)/(dftt_conf->detected_samples- 1)));
+    }
+    CHECK_QUIET(dftt_conf->quiet_flag, "Used a Hanning window\n");
+
+    return 0;
+}
+
+int window_hamming(dftt_config_t* dftt_conf, double* x)
+{
+    for (size_t n = 0; n < dftt_conf->detected_samples; n++) {
+        x[n] *= 0.54 - (0.46 * cos((2 * M_PI * n)/(dftt_conf->detected_samples- 1)));
+    }
+    CHECK_QUIET(dftt_conf->quiet_flag, "Used a Hamming window\n");
+
+    return 0;
+}
+
+int window_blackman(dftt_config_t* dftt_conf, double* x)
+{
+    for (size_t n = 0; n < dftt_conf->detected_samples; n++) {
+        x[n] *= 0.42 - (0.5 * cos((2 * M_PI * n)/(dftt_conf->detected_samples- 1))) + (0.08 * cos((4 * M_PI * n)/(dftt_conf->detected_samples- 1)));
+    }
+    CHECK_QUIET(dftt_conf->quiet_flag, "Used a Blackman window\n");
+
+    return 0;
+}
+
 int mix2mono(SF_INFO* sf_info, double* x, double** x_mono)
 {
-
     uint64_t i = 0;
     uint16_t c = 0;
 
@@ -498,6 +563,7 @@ void set_transform_size(dftt_config_t* dftt_conf, double complex** X, double** x
         truncate_array(x, dftt_conf->total_samples);
     }
 }
+
 
 void nextpow2(size_t* size) 
 {

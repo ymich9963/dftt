@@ -1,8 +1,8 @@
 #include "dftt.h"
 
 //TODO: Plotting? Create a dfttplot? Figure out gnuplot?
-//TODO: RadixM? Decimation in frequency?
-//TODO: Make hamming window to reduce spectral leakage which is when the audio file suddenly starts or ends
+//TODO: RadixM? 
+//TODO: Decimation in frequency?
 //TODO: Add auto-naming of files from the twc project
 //BUG: Issue when compiling with -O3.
 
@@ -20,6 +20,9 @@ int main (int argc, char** argv) {
 
     /* Execute the read input function  */
     CHECK_ERR(dftt_conf.inp(&dftt_conf, &x));
+
+    /* Execute any potential windowing */
+    dftt_conf.w(&dftt_conf, x);
 
     /* Set the array sizes to be used in the DFT */
     set_transform_size(&dftt_conf, &X, &x);

@@ -75,6 +75,7 @@ typedef struct DFTT_Config {
     bool shift_flag;
 
     int (*inp)(dftt_config_t* dftt_conf, double** x);
+    int (*w)(dftt_config_t* dftt_conf, double* x);
     void (*dft)(dftt_config_t* dftt_conf, double _Complex* X, double* x_mono);
     int (*outp)(dftt_config_t* dftt_conf, double** X);
 } dftt_config_t;
@@ -93,6 +94,11 @@ int open_csv_file(FILE** file, char ibuf[MAX_STR]);
 int read_csv_file_data(FILE* file, char** data_string);
 int get_data_from_string(char* data_string, double** x, size_t* detected_samples);
 void output_csv_file_string_info(dftt_config_t* dftt_conf);
+int select_windowing(dftt_config_t* dftt_conf, char* strval);
+int window_rectangular(dftt_config_t* dftt_conf, double* x);
+int window_hanning(dftt_config_t* dftt_conf, double* x);
+int window_hamming(dftt_config_t* dftt_conf, double* x);
+int window_blackman(dftt_config_t* dftt_conf, double* x);
 int mix2mono(SF_INFO* sf_info, double* x, double** x_mono);
 int select_fft_algo(dftt_config_t* dftt_conf, char* strval);
 void check_start_timer(dftt_config_t* dftt_conf);
