@@ -36,7 +36,7 @@
 					  })
 
 /* Check the quiet flag and output a simple sting */
-#define	CHECK_QUIET(x, string) ({ if ((!x)) { \
+#define	STATUS(x, string) ({ if ((!x)) { \
                             printf(string); \
 						} \
 					  })
@@ -105,14 +105,16 @@ void check_start_timer(dftt_config_t* dftt_conf);
 void zero_pad_array(double** arr, size_t new_size, size_t old_size);
 void truncate_array(double** arr, size_t new_size);
 void set_transform_size(dftt_config_t* dftt_conf, double _Complex** X, double** x);
-void nextpow2(size_t* size);
+void nextpow2(size_t size);
 void index_bit_reversal(size_t* index_arr, size_t n);
-void reorder_data(size_t* index_arr, double* data_arr, size_t data_size);
+void reorder_data_dit(size_t* index_arr, double* data_arr, size_t data_size);
+void reorder_data_dif(size_t* index_arr, double _Complex* data_arr, size_t data_size);
 void convert_to_complex(double* x, double _Complex* X_complex, size_t size);
 double _Complex get_twiddle_factor(size_t nk, size_t N);
 void dft(dftt_config_t* dftt_conf, double _Complex* X, double* x);
-void butterfly(double _Complex* X, double _Complex* x_mono_complex_copy, size_t k);
+void butterfly_dit(double _Complex* X, double _Complex* x_mono_complex_copy, size_t k);
 void fft_radix2_dit(dftt_config_t* dftt_conf, double _Complex* X, double* x);
+void fft_radix2_dif(dftt_config_t* dftt_conf, double _Complex* X, double* x);
 void dissect_complex_arr(double _Complex* X, double*** X_RIB, size_t size);
 void prep_outp(dftt_config_t* dftt_conf, double** X_RIB);
 int output_file_stdout(dftt_config_t* dftt_conf, double** X_RIB);

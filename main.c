@@ -1,10 +1,9 @@
 #include "dftt.h"
 
 //TODO: Plotting? Create a dfttplot? Figure out gnuplot?
+//TODO: Add dB units for power spectrum?
 //TODO: RadixM? 
-//TODO: Decimation in frequency?
 //TODO: Add auto-naming of files from the twc project
-//BUG: Issue when compiling with -O3.
 
 int main (int argc, char** argv) {
     double* x;                  // Input data
