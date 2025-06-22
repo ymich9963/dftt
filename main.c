@@ -2,8 +2,7 @@
 
 //TODO: Plotting? Create a dfttplot? Figure out gnuplot?
 //TODO: Add dB units for power spectrum?
-//TODO: RadixM? 
-//TODO: Add auto-naming of files from the twc project
+//TODO: More FFT algorithms! RadixM? Have a -M option.
 
 int main (int argc, char** argv) {
     double* x;                  // Input data
@@ -15,7 +14,7 @@ int main (int argc, char** argv) {
     set_defaults(&dftt_conf);
 
     /* Get the options from the CLI */
-    CHECK_ERR(get_options(&argc, argv, &dftt_conf));
+    CHECK_ERR(get_options(argc, argv, &dftt_conf));
 
     /* Execute the read input function  */
     CHECK_ERR(dftt_conf.inp(&dftt_conf, &x));
@@ -24,7 +23,7 @@ int main (int argc, char** argv) {
     dftt_conf.w(&dftt_conf, x);
 
     /* Set the array sizes to be used in the DFT */
-    set_transform_size(&dftt_conf, &X, &x);
+    CHECK_ERR(set_transform_size(&dftt_conf, &X, &x));
 
     /* Start the timer */
     check_start_timer(&dftt_conf);
@@ -35,10 +34,13 @@ int main (int argc, char** argv) {
     /* Check if timer was activated and output time */
     check_end_timer_output(&dftt_conf);
 
-    /* Dissects the complex values array into frequency bins, real, and imaginary numbers */
-    dissect_complex_arr(X, &X_RIB, dftt_conf.total_samples);
+    /* Parses the complex data buffer into real numbers, imaginary numbers, and frequency bins */
+    parse_complex_buff_to_RIB(X, &X_RIB, dftt_conf.total_samples);
 
+    /* Prepare the output based on the flags */
     prep_outp(&dftt_conf, X_RIB);
+
+    generate_file_name(dftt_conf.ofile, dftt_conf.ibuff, dftt_conf.input_flag);
 
     /* Output the DFT array */
     dftt_conf.outp(&dftt_conf, X_RIB);
