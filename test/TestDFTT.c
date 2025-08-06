@@ -509,7 +509,7 @@ void test_dft() {
     double x[] = {1,0,0,1};
     double complex* X = calloc(dftt_conf.total_samples, sizeof(double complex));
     double X_real_expected[] = {2.0,1.0,0.0,1.0};
-    double X_imag_expected[] = {0.0,-1.0,0.0,1.0};
+    double X_imag_expected[] = {0.0,1.0,0.0,-1.0};
 
     dft(&dftt_conf, X, x);
     for (int i = 0; i < dftt_conf.total_samples; i++) {
@@ -574,7 +574,7 @@ void test_fft_radix2_dit() {
     fft_radix2_dit(&dftt_conf, X, x);
 
     double X_real_expected[] = {2.0,1.0,0.0,1.0};
-    double X_imag_expected[] = {0.0,-1.0,0.0,1.0};
+    double X_imag_expected[] = {0.0,1.0,0.0,-1.0};
     for (int i = 0; i < dftt_conf.total_samples; i++) {
         TEST_ASSERT_DOUBLE_WITHIN(1e-12, X_real_expected[i], creal(X[i]));
         TEST_ASSERT_DOUBLE_WITHIN(1e-12, X_imag_expected[i], cimag(X[i]));
@@ -595,7 +595,7 @@ void test_fft_radix2_dif() {
     fft_radix2_dif(&dftt_conf, X, x);
 
     double X_real_expected[] = {2.0,1.0,0.0,1.0};
-    double X_imag_expected[] = {0.0,-1.0,0.0,1.0};
+    double X_imag_expected[] = {0.0,1.0,0.0,-1.0};
     for (int i = 0; i < dftt_conf.total_samples; i++) {
         TEST_ASSERT_DOUBLE_WITHIN(1e-12, X_real_expected[i], creal(X[i]));
         TEST_ASSERT_DOUBLE_WITHIN(1e-12, X_imag_expected[i], cimag(X[i]));
@@ -615,6 +615,10 @@ void test_get_freq_bins() {
     }
 }
 
+void test_parse_complex_buff_to_RIB() {
+
+}
+ 
 void test_set_precision_format() {
     char format[9];
 

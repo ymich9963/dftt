@@ -769,7 +769,7 @@ void dft(dftt_config_t* restrict dftt_conf, double complex* restrict X, double* 
     /* Calculate DFT */
     for (k = 0; k < N; k++) {
         for (n = 0; n < N; n++) { 
-            X[k] += (x[n] * cos(2 * M_PI * n * k / N)) + (I * x[n] * sin(2 * M_PI * n * k / N));
+            X[k] += (x[n] * cos(2 * M_PI * n * k / N)) - (I * x[n] * sin(2 * M_PI * n * k / N));
         }
     }
 
@@ -779,6 +779,7 @@ void dft(dftt_config_t* restrict dftt_conf, double complex* restrict X, double* 
 void butterfly_dit(double complex* restrict X, double complex* restrict X_copy, size_t k)
 {
     double complex w, a, b;
+
     for (size_t N = 2; N <= k; N *= 2) {
         /* Counter j moves the point of where the N-size sequence starts */
         for (size_t j = 0; j < k; j += N) {
@@ -834,29 +835,20 @@ void fft_radix2_dit(dftt_config_t* restrict dftt_conf, double complex* restrict 
     size_t* index_arr = calloc(dftt_conf->total_samples, sizeof(size_t));
     index_bit_reversal(index_arr, dftt_conf->total_samples);
     STATUS(dftt_conf->quiet_flag, "Generated bit-reversed index array.\n");
+
     /* Re-order the data based on the bit-reversed indexes */
     reorder_data_dit(index_arr, x, dftt_conf->total_samples);
     STATUS(dftt_conf->quiet_flag, "Re-ordered data based on the new index array.\n");
 
-
     /* Create an array to convert the mono input to complex values */
     double complex* X_copy = calloc(dftt_conf->total_samples, sizeof(double complex));
     convert_to_complex(x, X_copy, dftt_conf->total_samples);
-    for (int i = 0; i < dftt_conf->total_samples; i++) {
-        printf("%lld\n", index_arr[i]);
-        printf("%lf\n", x[i]);
-        printf("%lf + i%lf\n", creal(X_copy[i]), cimag(X_copy[i]));
-    }
 
     STATUS(dftt_conf->quiet_flag, "Converted mono input to complex values.\n");
 
     /* Execute butterfly and twiddle factor calculations */
     butterfly_dit(X, X_copy, dftt_conf->total_samples);
     STATUS(dftt_conf->quiet_flag, "Executed butterfly procedure.\n");
-
-    for (int i = 0; i < dftt_conf->total_samples; i++) {
-        printf("%lf + i%lf\n", creal(X[i]), cimag(X[i]));
-    }
 
     STATUS(dftt_conf->quiet_flag, "Finished.\n");
 }
