@@ -1,10 +1,11 @@
-#include <sndfile.h>
+#pragma once
+
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>
 #include <complex.h>
 #include <time.h>
-#include <stdbool.h>
+#include <sndfile.h>
 
 #define MAX_STR 999
 #define MIN_STR 200
@@ -63,24 +64,25 @@ typedef struct DFTT_Config {
     size_t sampling_freq; 
 
     /* Timers */
-    clock_t start_time;
-    clock_t end_time;
+    struct timespec start_time;
+    struct timespec end_time;
 
     /* Format specifier vars */
     char format[9];         // Format string for the output precision
     uint8_t precision;
 
     /* Flags */
-    bool info_flag;
-    bool fft_flag;
-    bool timer_flag;
-    bool input_flag;
-    bool quiet_flag;
-    bool pow_flag;
-    bool norm_flag;
-    bool bins_flag;
-    bool half_flag;
-    bool shift_flag;
+    uint8_t info_flag;
+    uint8_t fft_flag;
+    uint8_t timer_flag;
+    uint8_t input_flag;
+    uint8_t quiet_flag;
+    uint8_t pow_flag;
+    uint8_t norm_flag;
+    uint8_t bins_flag;
+    uint8_t headers_flag;
+    uint8_t half_flag;
+    uint8_t shift_flag;
 
     /* Function pointers */
     int (*inp)(dftt_config_t* dftt_conf, double** x);
@@ -105,6 +107,14 @@ void set_defaults(dftt_config_t* dftt_conf);
  * @return Success or failure.
  */
 int get_options(int argc, char** argv, dftt_config_t* dftt_conf);
+
+/**
+ * @brief Read the input and decide how to treat it.
+ *
+ * @param dftt_conf DFTT Config struct.
+ * @return Success or failure.
+ */
+int read_input(dftt_config_t* dftt_conf);
 
 /**
  * @brief Select the output format.
@@ -149,8 +159,9 @@ int get_audio_file_data(SNDFILE* file, SF_INFO* sf_info, double** x);
  *
  * @param dftt_conf DFTT Config struct.
  * @param sf_info SF_INFO pointer.
+ * @return Success or failure.
  */
-void output_audio_file_info(dftt_config_t* dftt_conf, SF_INFO* sf_info);
+int output_audio_file_info(dftt_config_t* dftt_conf, SF_INFO* sf_info);
 
 /**
  * @brief Get the SNDFILE major format string. Same as descriptions given in the documentation.
@@ -167,6 +178,31 @@ const char* get_sndfile_major_format(SF_INFO* sf_info);
  * @return Subtype string.
  */
 const char* get_sndfile_subtype(SF_INFO* sf_info);
+
+/**
+ * @brief Check the string if is in CSV format.
+ *
+ * @param ibuff Input buffer.
+ * @return Success or failure.
+ */
+int check_csv_string(char* ibuff);
+
+/**
+ * @brief Check the extension in the input buffer if it can be read like a CSV.
+ *
+ * @param ibuff Input buffer.
+ * @return Success or failure.
+ */
+int check_csv_extension(char* ibuff);
+
+/**
+ * @brief Read the input as a CSV file or CSV string.
+ *
+ * @param dftt_conf DFTT Config struct.
+ * @param x Pointer to data buffer.
+ * @return Success or failure.
+ */
+int read_csv_string_file_input(dftt_config_t* dftt_conf, double** x);
 
 /**
  * @brief Read the input as a CSV file or CSV string.
@@ -209,8 +245,9 @@ int get_data_from_string(char* data_string, double** x, size_t* detected_samples
  * @brief Output some info about the input.
  *
  * @param dftt_conf DFTT Config struct.
+ * @return Success or failure.
  */
-void output_input_info(dftt_config_t* dftt_conf);
+int output_input_info(dftt_config_t* dftt_conf);
 
 /**
  * @brief Select the windowing functions based on the input string.
@@ -276,7 +313,7 @@ int select_fft_algo(dftt_config_t* dftt_conf, char* strval);
  *
  * @param dftt_conf DFTT Config struct.
  */
-void check_start_timer(dftt_config_t* dftt_conf);
+void check_timer_start(dftt_config_t* dftt_conf);
 
 /**
  * @brief Append the input array with zeros.
@@ -323,7 +360,7 @@ int set_transform_size(dftt_config_t* dftt_conf, double _Complex** X, double** x
 void index_bit_reversal(size_t* index_arr, size_t n);
 
 /**
- * @brief Reorder data for the Discrete In Time FFT.
+ * @brief Reorder data to the indexes in the index array.
  *
  * @param index_arr Array containing the index data.
  * @param data_arr Data buffer of type double.
@@ -332,7 +369,7 @@ void index_bit_reversal(size_t* index_arr, size_t n);
 void reorder_data_dit(size_t* index_arr, double* data_arr, size_t data_size);
 
 /**
- * @brief Reorder data for the Discrete In Frequency FFT.
+ * @brief Reorder data to the indexes in the index array.
  *
  * @param index_arr Array containing the index data.
  * @param data_arr Data buffer of type complex.
@@ -477,7 +514,7 @@ char* get_datetime_string();
  * @param ifile Input file name.
  * @param input_flag Flag previously set that specifies the type of input.
  */
-void generate_file_name(char* ofile, char* ibuff, bool input_flag);
+void generate_file_name(char* ofile, char* ibuff, uint8_t input_flag);
 
 /**
  * @brief Output column headings. Used in CSV outputs.
@@ -485,8 +522,9 @@ void generate_file_name(char* ofile, char* ibuff, bool input_flag);
  * @param file FILE buffer.
  * @param bins_flag Flag to check if bins are outputed.
  * @param pow_flag Flag to check if power spectrum is outputed.
+ * @param pow_flag Flag to output column headers.
  */
-void print_csv_headings(FILE* file, bool bins_flag, bool pow_flag);
+void print_csv_headings(FILE* file, uint8_t bins_flag, uint8_t pow_flag, uint8_t headers_flag);
 
 /**
  * @brief Output to stdout in columns.
@@ -547,9 +585,10 @@ int output_file_c_array(dftt_config_t* dftt_conf, double** X_RIB);
  *
  * @param dftt_conf DFTT Config struct.
  */
-void check_end_timer_output(dftt_config_t* dftt_conf);
+void check_timer_end_output(dftt_config_t* dftt_conf);
 
 /**
  * @brief Output the '--help' option.
+ * @return Success or failure.
  */
-void output_help();
+int output_help();

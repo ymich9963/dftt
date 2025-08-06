@@ -1,8 +1,8 @@
 OBJECTS := main.o dftt.o
 BUILD_DIR := ./build
 TARGET := dftt
-CFLAGS := -Wall -O1
-LIB := -lsndfile
+CFLAGS := -Wall -O3 
+LIB := -lsndfile 
 CC := clang
 
 ifndef VERBOSE

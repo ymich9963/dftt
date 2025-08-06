@@ -3,12 +3,17 @@
 //TODO: Plotting? Create a dfttplot? Figure out gnuplot?
 //TODO: Add dB units for power spectrum?
 //TODO: More FFT algorithms! RadixM? Have a -M option.
+//TODO: Add slicing the input
+//TODO: Add DFT for any file as binary
+//TODO: Implement imaginary number input
 
 int main (int argc, char** argv) {
     double* x;                  // Input data
     double complex* X = NULL;   // Fourier Transform result
     double** X_RIB = NULL;      // Array containing the real, and imaginary data, and frequency bins.
     dftt_config_t dftt_conf;    // Tool config
+
+    printf("DFTT start.\n");
 
     /* Set defaults to ensure certain behaviour */
     set_defaults(&dftt_conf);
@@ -26,13 +31,13 @@ int main (int argc, char** argv) {
     CHECK_ERR(set_transform_size(&dftt_conf, &X, &x));
 
     /* Start the timer */
-    check_start_timer(&dftt_conf);
+    check_timer_start(&dftt_conf);
 
     /* DFT */
     dftt_conf.dft(&dftt_conf, X, x);
 
     /* Check if timer was activated and output time */
-    check_end_timer_output(&dftt_conf);
+    check_timer_end_output(&dftt_conf);
 
     /* Parses the complex data buffer into real numbers, imaginary numbers, and frequency bins */
     parse_complex_buff_to_RIB(X, &X_RIB, dftt_conf.total_samples);
@@ -44,6 +49,8 @@ int main (int argc, char** argv) {
 
     /* Output the DFT array */
     dftt_conf.outp(&dftt_conf, X_RIB);
+
+    fflush(stdout);
 
     free(x);
     free(X);

@@ -18,6 +18,7 @@ void set_defaults(dftt_config_t* restrict dftt_conf)
     dftt_conf->pow_flag     = 0;
     dftt_conf->norm_flag    = 0;
     dftt_conf->bins_flag    = 0;
+    dftt_conf->headers_flag = 1;
     dftt_conf->half_flag    = 0;
     dftt_conf->shift_flag   = 0;
 
@@ -29,7 +30,6 @@ void set_defaults(dftt_config_t* restrict dftt_conf)
 
 int get_options(int argc, char** restrict argv, dftt_config_t* restrict dftt_conf)
 {
-    char strval[MAX_STR];
     long lval = 0;
     int dval = 0;
 
@@ -57,13 +57,21 @@ int get_options(int argc, char** restrict argv, dftt_config_t* restrict dftt_con
         if (argv[i][0] != '-' && argv[i - 1][0] != '-') {
             CHECK_STR_LEN(argv[i]);
             strcpy(dftt_conf->ibuff, argv[i]);
-            dftt_conf->inp = &read_audio_file_input;
+            CHECK_RET(read_input(dftt_conf));
             continue;
         }
 
-        if (!(strcmp("-i", argv[i])) || !(strcmp("--input", argv[i])) || !(strcmp("--input-audio", argv[i]))) {
-            CHECK_STR_LEN(argv[i]);
-            strcpy(dftt_conf->ibuff, argv[i]);
+        if (!(strcmp("-i", argv[i]))) {
+            CHECK_STR_LEN(argv[i + 1]);
+            strcpy(dftt_conf->ibuff, argv[i + 1]);
+            CHECK_RET(read_input(dftt_conf));
+            i++;
+            continue;
+        }
+
+        if (!(strcmp("--input-audio", argv[i]))) {
+            CHECK_STR_LEN(argv[i + 1]);
+            strcpy(dftt_conf->ibuff, argv[i + 1]);
             dftt_conf->inp = &read_audio_file_input;
             i++;
             continue;
@@ -174,6 +182,11 @@ int get_options(int argc, char** restrict argv, dftt_config_t* restrict dftt_con
             continue;
         }
 
+        if (!(strcmp("--no-headers", argv[i]))) {
+            dftt_conf->headers_flag = 0; 
+            continue;
+        }
+
         fprintf(stderr, "\nNo such option '%s'. Please check inputs.\n\n", argv[i]);
 
         return 1;
@@ -184,40 +197,59 @@ int get_options(int argc, char** restrict argv, dftt_config_t* restrict dftt_con
 
 int select_output_format(dftt_config_t* restrict dftt_conf, char* restrict strval)
 {
+    dftt_conf->outp = NULL; 
+
     if(!(strcmp("stdout", strval))) {
         dftt_conf->outp = &output_stdout; 
-
-        return 0;
     }
     if(!(strcmp("stdout-csv", strval))) {
         dftt_conf->outp = &output_stdout_csv; 
-
-        return 0;
     }
     if(!(strcmp("columns", strval))) {
         dftt_conf->outp = &output_file_columns; 
-
-        return 0;
     }
     if(!(strcmp("csv", strval))) {
         dftt_conf->outp = &output_file_csv; 
-
-        return 0;
     }
     if(!(strcmp("hex-dump", strval))) {
         dftt_conf->outp = &output_file_hex_dump; 
-
-        return 0;
     }
     if(!(strcmp("c-array", strval))) {
         dftt_conf->outp = &output_file_c_array; 
+    }
 
-        return 0;
-    } else {
-        fprintf(stderr, "\nOutput method not available.\n");
+    if (!dftt_conf->outp){
+        fprintf(stderr, "\nOutput format '%s' not available.\n", strval);
 
         return 1;
     }
+
+    return 0;
+}
+
+int read_input(dftt_config_t* restrict dftt_conf)
+{
+    SNDFILE* file;          // Pointer to the input audio file
+    SF_INFO sf_info;        // Input audio file info
+
+    /* Initialise the struct */
+    memset(&sf_info, 0, sizeof(SF_INFO));
+
+    /* Check to see if it can be opened as a file */
+    file = sf_open(dftt_conf->ibuff, SFM_READ, &sf_info);
+    if (file) {
+        dftt_conf->inp = &read_audio_file_input;
+    } else if (!(check_csv_extension(dftt_conf->ibuff))) {
+        dftt_conf->inp = &read_csv_string_file_input;
+    } else if (!(check_csv_string(dftt_conf->ibuff))) {
+        dftt_conf->inp = &read_csv_string_file_input;
+    } else {
+        fprintf(stderr, "Input is not an audio file or a CSV file/string.\n");
+        return 1;
+    }
+
+    sf_close(file);
+    return 0;
 }
 
 int read_audio_file_input(dftt_config_t* restrict dftt_conf, double** restrict x)
@@ -231,7 +263,7 @@ int read_audio_file_input(dftt_config_t* restrict dftt_conf, double** restrict x
 
     /* Initialise input file buffer and open he input file */
     file = NULL;
-    CHECK_ERR(open_audio_file(&file, &sf_info, dftt_conf->ibuff));
+    open_audio_file(&file, &sf_info, dftt_conf->ibuff);
 
     /* Initialise input data array and read the input audio file */
     file_data = NULL; 
@@ -256,8 +288,8 @@ int read_audio_file_input(dftt_config_t* restrict dftt_conf, double** restrict x
 int open_audio_file(SNDFILE** restrict file, SF_INFO* restrict sf_info, char* restrict ibuff)
 {
     *file = sf_open(ibuff, SFM_READ, sf_info);
-    if(!(file)) {
-        fprintf(stderr, "\n%s\n", sf_strerror(*file));
+    if(!(*file)) {
+        fprintf(stderr, "%s\n", sf_strerror(*file));
 
         return 1;
     }
@@ -284,7 +316,7 @@ int get_audio_file_data(SNDFILE* restrict file, SF_INFO* restrict sf_info, doubl
     return 0;
 }
 
-void output_audio_file_info(dftt_config_t* restrict dftt_conf, SF_INFO* restrict sf_info)
+int output_audio_file_info(dftt_config_t* restrict dftt_conf, SF_INFO* restrict sf_info)
 {
     if (dftt_conf->info_flag && !dftt_conf->quiet_flag) {
         fprintf(stdout, "\n--INFO--\n");
@@ -296,6 +328,8 @@ void output_audio_file_info(dftt_config_t* restrict dftt_conf, SF_INFO* restrict
         fprintf(stdout, "Subtype: %s\n", get_sndfile_subtype(sf_info));
         fprintf(stdout, "---\n\n");
     }
+
+    return 0;
 }
 
 const char* get_sndfile_major_format(SF_INFO* restrict sf_info)
@@ -338,6 +372,60 @@ const char* get_sndfile_subtype(SF_INFO* restrict sf_info)
     return "N/A";
 }
 
+int check_csv_string(char* restrict ibuff) {
+    /* Make a copy of the string to get the number of data points  */
+    char* data_string_copy;
+    data_string_copy = malloc(sizeof(char) * strlen(ibuff)); 
+    strcpy(data_string_copy, ibuff);
+
+    /* Get the number of data points */
+    size_t samples = 0;
+    char* token = strtok(data_string_copy, ",");
+    while (token != NULL) {
+        samples++;
+        token = strtok(NULL, ",");
+    }
+
+    if (samples > 1) {
+        return 0;
+    } else {
+        return 1;
+    }
+}
+
+
+int check_csv_extension(char* restrict ibuff) {
+    const int supported_csv_ext_num = 2;
+    char* supported_csv_ext[] = {".csv", ".txt"};
+    uint8_t supported_flag = 0;
+    int ibuff_len = strlen(ibuff);
+
+    char* ibuff_ext = malloc(ibuff_len *  sizeof(char));
+    memset(ibuff_ext, '\0', ibuff_len);
+
+    /* Start from 1 to skip any './' */
+    for (int i = 1; i < ibuff_len; i++) {
+        if (ibuff[i] == '.') {
+            for (int c = i, j = 0; c < ibuff_len; c++, j++) {
+                ibuff_ext[j] = ibuff[c];
+            }
+            break;
+        }
+    }
+
+    for (int i = 0; i < supported_csv_ext_num; i++) {
+        if (!strcmp(supported_csv_ext[i], ibuff_ext)) {
+            supported_flag = 1;
+        }
+    }
+
+    if (!supported_flag) {
+        return 1;
+    }
+
+    return 0;
+
+}
 int read_csv_string_file_input(dftt_config_t* restrict dftt_conf, double** restrict x)
 {
     FILE* file;          // Pointer to the input audio file
@@ -363,6 +451,7 @@ int read_csv_string_file_input(dftt_config_t* restrict dftt_conf, double** restr
     output_input_info(dftt_conf);
 
     free(data_string);
+    fclose(file);
     return 0;
 }
 
@@ -377,7 +466,7 @@ int open_csv_file(FILE** restrict file, char* restrict ibuff)
     return 0;
 }
 
-// TODO: Necessary to return 0?
+// FIX: Necessary to return 0? Check the returns of functions maybe
 int read_csv_file_data(FILE* restrict file, char** restrict data_string)
 {
     /* Go to the end of the file to find the size needed to store the data */
@@ -396,6 +485,7 @@ int read_csv_file_data(FILE* restrict file, char** restrict data_string)
     return 0;
 }
 
+// FIX: Find a way to return 1 when detected_samples is not the size of the data_string?
 int get_data_from_string(char* restrict data_string, double** restrict x, size_t* restrict detected_samples)
 {
     /* Make a copy of the string to get the number of data points  */
@@ -410,7 +500,6 @@ int get_data_from_string(char* restrict data_string, double** restrict x, size_t
         samples++;
         token = strtok(NULL, ",");
     }
-    free(data_string_copy);
 
     /* Allocate the size of the array based on the data points */
     *x = calloc(samples, sizeof(double));
@@ -431,7 +520,7 @@ int get_data_from_string(char* restrict data_string, double** restrict x, size_t
     return 0;
 }
 
-void output_input_info(dftt_config_t* restrict dftt_conf)
+int output_input_info(dftt_config_t* restrict dftt_conf)
 {
     if (dftt_conf->info_flag && !dftt_conf->quiet_flag) {
         fprintf(stdout, "\n--INFO--\n");
@@ -440,14 +529,18 @@ void output_input_info(dftt_config_t* restrict dftt_conf)
         fprintf(stdout, !dftt_conf->input_flag ? "Format: CSV File\n" : "Format: CSV String\n");
         fprintf(stdout, "--------\n\n");
     }
+
+    return 0;
 }
 
 int select_windowing(dftt_config_t* restrict dftt_conf, char* restrict strval)
 {
+    dftt_conf->w = NULL;
+
     if (!(strcmp("rectangular", strval))) {
         dftt_conf->w = &window_rectangular;
     }
-    if (!(strcmp("hanning", strval))) {
+    if (!(strcmp("hann", strval))) {
         dftt_conf->w = &window_hann;
     }
     if (!(strcmp("hamming", strval))) {
@@ -455,10 +548,14 @@ int select_windowing(dftt_config_t* restrict dftt_conf, char* restrict strval)
     }
     if (!(strcmp("blackman", strval))) {
         dftt_conf->w = &window_blackman;
-    } else {
-        fprintf(stderr, "\nWindowing function not implemented. Exiting...\n\n");
+    } 
+
+    if (!dftt_conf->w){
+        fprintf(stderr, "\nWindowing function '%s' not implemented. Exiting...\n\n", strval);
+
         return 1;
     }
+
     return 0;
 }
 
@@ -471,15 +568,15 @@ void window_rectangular(dftt_config_t* restrict dftt_conf, double* restrict x)
 void window_hann(dftt_config_t* restrict dftt_conf, double* restrict x)
 {
     for (size_t n = 0; n < dftt_conf->detected_samples; n++) {
-        x[n] *= 0.5 - (0.5 * cos((2 * M_PI * n)/(dftt_conf->detected_samples- 1)));
+        x[n] *= 0.5 - (0.5 * cos((2 * M_PI * n)/(dftt_conf->detected_samples - 1)));
     }
-    STATUS(dftt_conf->quiet_flag, "Used a Hanning window.\n");
+    STATUS(dftt_conf->quiet_flag, "Used a Hann window.\n");
 }
 
 void window_hamming(dftt_config_t* restrict dftt_conf, double* restrict x)
 {
     for (size_t n = 0; n < dftt_conf->detected_samples; n++) {
-        x[n] *= 0.54 - (0.46 * cos((2 * M_PI * n)/(dftt_conf->detected_samples- 1)));
+        x[n] *= 0.54 - (0.46 * cos((2 * M_PI * n)/(dftt_conf->detected_samples - 1)));
     }
     STATUS(dftt_conf->quiet_flag, "Used a Hamming window.\n");
 }
@@ -487,7 +584,7 @@ void window_hamming(dftt_config_t* restrict dftt_conf, double* restrict x)
 void window_blackman(dftt_config_t* restrict dftt_conf, double* restrict x)
 {
     for (size_t n = 0; n < dftt_conf->detected_samples; n++) {
-        x[n] *= 0.42 - (0.5 * cos((2 * M_PI * n)/(dftt_conf->detected_samples- 1))) + (0.08 * cos((4 * M_PI * n)/(dftt_conf->detected_samples- 1)));
+        x[n] *= 0.42 - (0.5 * cos((2 * M_PI * n)/(dftt_conf->detected_samples - 1))) + (0.08 * cos((4 * M_PI * n)/(dftt_conf->detected_samples- 1)));
     }
     STATUS(dftt_conf->quiet_flag, "Used a Blackman window.\n");
 }
@@ -508,23 +605,28 @@ void mix2mono(SF_INFO* restrict sf_info, double* restrict x, double** restrict x
 
 int select_fft_algo(dftt_config_t* restrict dftt_conf, char* restrict strval)
 {
+    dftt_conf->dft = NULL;
+
     if (!(strcmp("radix2-dit", strval))) {
         dftt_conf->dft = &fft_radix2_dit;
-        return 0;
     }
     if (!(strcmp("radix2-dif", strval))) {
         dftt_conf->dft = &fft_radix2_dif;
-        return 0;
-    } else {
-        fprintf(stderr, "\nFFT algorithm not implemented. Exiting...\n\n");
+    }
+
+    if (!dftt_conf->dft) {
+        fprintf(stderr, "FFT algorithm '%s' not implemented.\n", strval);
         return 1;
     }
+
+    return 0;
 }
 
-void check_start_timer(dftt_config_t* restrict dftt_conf)
+void check_timer_start(dftt_config_t* restrict dftt_conf)
 {
     if (dftt_conf->timer_flag && !dftt_conf->quiet_flag) {
-        dftt_conf->start_time = clock();
+        // dftt_conf->start_time = clock();
+        timespec_get(&dftt_conf->start_time, TIME_UTC);
         printf("Started timer.\n");
     }
 }
@@ -534,7 +636,7 @@ int zero_pad_array(double** restrict arr, size_t new_size, size_t old_size)
     *arr = realloc(*arr, new_size * sizeof(double));
     if (*arr == NULL) {
         fprintf(stderr, "\nUnable to reallocate input array.\n");
-        
+
         return 1;
     }
 
@@ -585,18 +687,15 @@ int set_transform_size(dftt_config_t* restrict dftt_conf, double complex** restr
 
     /* Allocate DFT array */
     *X = calloc(dftt_conf->total_samples, sizeof(double complex));
-    if (*X == NULL) {
-        fprintf(stderr, "\nUnable to reallocate DFT array.\n");
-        
-        return 1;
-    }
 
     /* Check if the input array needs expanding/truncating before executing a DFT */
     if (dftt_conf->detected_samples < dftt_conf->total_samples) {
         CHECK_RET(zero_pad_array(x, dftt_conf->total_samples, dftt_conf->detected_samples));
+        printf("Zero-padded input.\n");
     }
     if (dftt_conf->detected_samples > dftt_conf->total_samples) {
         CHECK_RET(truncate_array(x, dftt_conf->total_samples));
+        printf("Truncated input.\n");
     }
 
     return 0;
@@ -732,26 +831,32 @@ void fft_radix2_dit(dftt_config_t* restrict dftt_conf, double complex* restrict 
     STATUS(dftt_conf->quiet_flag, "Calculating DFT using Radix-2 Decimation In Time.\n");
 
     /* Get the array of the bit-reversed indexes */
-    size_t index_arr[dftt_conf->total_samples];
+    size_t* index_arr = calloc(dftt_conf->total_samples, sizeof(size_t));
     index_bit_reversal(index_arr, dftt_conf->total_samples);
     STATUS(dftt_conf->quiet_flag, "Generated bit-reversed index array.\n");
-
-    //BUG: Seems to need a small delay between these functions sometimes?
-    //BUG: Issue when compiling with -O3.
-    for (size_t i = 0; i < dftt_conf->total_samples; i++);
-
     /* Re-order the data based on the bit-reversed indexes */
     reorder_data_dit(index_arr, x, dftt_conf->total_samples);
     STATUS(dftt_conf->quiet_flag, "Re-ordered data based on the new index array.\n");
 
+
     /* Create an array to convert the mono input to complex values */
-    double complex X_copy[dftt_conf->total_samples];
+    double complex* X_copy = calloc(dftt_conf->total_samples, sizeof(double complex));
     convert_to_complex(x, X_copy, dftt_conf->total_samples);
+    for (int i = 0; i < dftt_conf->total_samples; i++) {
+        printf("%lld\n", index_arr[i]);
+        printf("%lf\n", x[i]);
+        printf("%lf + i%lf\n", creal(X_copy[i]), cimag(X_copy[i]));
+    }
+
     STATUS(dftt_conf->quiet_flag, "Converted mono input to complex values.\n");
 
     /* Execute butterfly and twiddle factor calculations */
     butterfly_dit(X, X_copy, dftt_conf->total_samples);
     STATUS(dftt_conf->quiet_flag, "Executed butterfly procedure.\n");
+
+    for (int i = 0; i < dftt_conf->total_samples; i++) {
+        printf("%lf + i%lf\n", creal(X[i]), cimag(X[i]));
+    }
 
     STATUS(dftt_conf->quiet_flag, "Finished.\n");
 }
@@ -761,7 +866,7 @@ void fft_radix2_dif(dftt_config_t* restrict dftt_conf, double complex* restrict 
     STATUS(dftt_conf->quiet_flag, "Calculating DFT using Radix-2 Decimation In Frequency.\n");
 
     /* Create an array to convert the mono input to complex values */
-    double complex X_copy[dftt_conf->total_samples];
+    double complex* X_copy = calloc(dftt_conf->total_samples, sizeof(double complex));
     convert_to_complex(x, X_copy, dftt_conf->total_samples);
     STATUS(dftt_conf->quiet_flag, "Converted mono input to complex values.\n");
 
@@ -770,13 +875,9 @@ void fft_radix2_dif(dftt_config_t* restrict dftt_conf, double complex* restrict 
     STATUS(dftt_conf->quiet_flag, "Executed butterfly procedure.\n");
 
     /* Get the array of the bit-reversed indexes */
-    size_t index_arr[dftt_conf->total_samples];
+    size_t* index_arr = calloc(dftt_conf->total_samples, sizeof(size_t));
     index_bit_reversal(index_arr, dftt_conf->total_samples);
     STATUS(dftt_conf->quiet_flag, "Generated bit-reversed index array.\n");
-
-    //BUG: Seems to need a small delay between these functions sometimes?
-    //BUG: Issue when compiling with -O3.
-    for (size_t i = 0; i < dftt_conf->total_samples; i++);
 
     /* Re-order the data based on the bit-reversed indexes */
     reorder_data_dif(index_arr, X, dftt_conf->total_samples);
@@ -923,7 +1024,7 @@ char* get_datetime_string()
     return s;
 }
 
-void generate_file_name(char* restrict ofile, char* restrict ifile, bool input_flag)
+void generate_file_name(char* restrict ofile, char* restrict ifile, uint8_t input_flag)
 {
     if (ofile[0] != '\0' ) {
 
@@ -951,7 +1052,7 @@ void generate_file_name(char* restrict ofile, char* restrict ifile, bool input_f
 }
 
 //TODO: Add optional precision for frequency bins
-void print_freq_bin(FILE* file, double freq_bin, bool bins_flag, char separator[4])
+void print_freq_bin(FILE* file, double freq_bin, uint8_t bins_flag, char separator[4])
 {
     if (bins_flag) {
         fprintf(file, "%.0f%s", freq_bin, separator);
@@ -959,20 +1060,27 @@ void print_freq_bin(FILE* file, double freq_bin, bool bins_flag, char separator[
 }
 
 //TODO: Probably could make this better
-// Add a flag to not use the headers
-void print_csv_headings(FILE* file, bool bins_flag, bool pow_flag)
+// Add a flag to not use the headers, 
+void print_csv_headings(FILE* file, uint8_t bins_flag, uint8_t pow_flag, uint8_t headers_flag)
 {
-    if (!bins_flag && !pow_flag) {
-        fprintf(file, "Real,Imag"); 
-    }
-    if (bins_flag && !pow_flag) {
-        fprintf(file, "Bins,Real,Imag"); 
-    }
-    if (bins_flag && pow_flag) {
-        fprintf(file, "Bins,Pow"); 
-    }
-    if (!bins_flag && pow_flag) {
-        fprintf(file, "Pow"); 
+    uint8_t flag_check = (headers_flag << 2) | (pow_flag << 1) | bins_flag;
+
+    switch (flag_check) {
+        case (0b100):
+            fprintf(file, "Real,Imag"); 
+            break;
+        case (0b110):
+            fprintf(file, "Bins,Real,Imag"); 
+            break;
+        case (0b111):
+            fprintf(file, "Bins,Pow"); 
+            break;
+        case (0b101):
+            fprintf(file, "Pow"); 
+            break;
+        default:
+            /* If the headers_flag is not set it goes to the default branch */
+            break;
     }
     fprintf(file, "\n"); 
 }
@@ -1053,7 +1161,7 @@ int output_file_csv(dftt_config_t* dftt_conf, double** X_RIB)
         return 1;
     };
 
-    print_csv_headings(file, dftt_conf->bins_flag, dftt_conf->pow_flag);
+    print_csv_headings(file, dftt_conf->bins_flag, dftt_conf->pow_flag, dftt_conf->headers_flag);
 
     for (size_t i = 0; i < dftt_conf->total_samples; i++) {
         print_freq_bin(file, X_RIB[FREQ_BINS_INDEX][i], dftt_conf->bins_flag, ",");
@@ -1141,15 +1249,17 @@ int output_file_c_array(dftt_config_t* dftt_conf, double** X_RIB)
 }
 
 //TODO: Increase timer resolution
-void check_end_timer_output(dftt_config_t* dftt_conf)
+void check_timer_end_output(dftt_config_t* dftt_conf)
 {
     if (dftt_conf->timer_flag && !dftt_conf->quiet_flag) {
-        dftt_conf->end_time = clock() - dftt_conf->start_time;
-        printf("Time taken: %.3lf seconds\n", (float) dftt_conf->end_time/CLOCKS_PER_SEC);
+        double time_taken;
+        timespec_get(&dftt_conf->end_time, TIME_UTC);
+        time_taken = (dftt_conf->end_time.tv_sec - dftt_conf->start_time.tv_sec) + ((dftt_conf->end_time.tv_nsec - dftt_conf->start_time.tv_nsec) / 1e9);
+        printf("Time taken: %.9lf seconds\n", time_taken);
     }
 }
 
-void output_help()
+int output_help()
 {
     printf(
             "\nDiscrete Fourier Transform Tool (DFTT) help page:\n\n"
@@ -1157,20 +1267,23 @@ void output_help()
             "\t\t--dft\t\t\t\t= Regular DFT calculation using Euler's formula to expand the summation. Default behaviour, included for completion.\n"
             "\t\t--timer\t\t\t\t= Start a timer to see how long the calculation takes.\n"
             "\t\t--info\t\t\t\t= Output to stdout some info about the input file.\n"
-            "\t-i,\t--input <Audio File>\t\t= Path or name of the input audio file.\n"
+            "\t-i,\t--input <File/String>\t= Accepts audio files and CSV files or strings. Make sure to separate string with commas, e.g. 1,0,0,1. Use the options below if you want to specify but DFTT implements auto-detection.\n"
             "\t\t--input-audio\n"
-            "\t\t--input-csv <CSV File/String>\t= Path or name of the input csv file, or the input string. Must be separated by comma. Example input '1,0,0,1' or 'input.csv' containing '1,0,0,1'.\n"
+            "\t\t--input-csv\n"
             "\t-o,\t--output <File Name>\t\t= Path or name of the output file.\n"
-            "\t-f,\t--output-format <Format>\t= Format of the output file. Select between: 'stdout', 'stdout-csv', columns', 'csv', 'hex-dump', and 'c-array'.\n"
-            "\t-N,\t--total-samples <Number>\t\t= Set total number of samples to use when calculating. If using the FFT, it rounds up to the next power of 2 samples, zero-padding the signal if necessary.\n"
+            "\t-f,\t--output-format <Format>\t= Format of the output file. Select between: 'stdout', 'stdout-csv', 'columns', 'csv', 'hex-dump', and 'c-array'.\n"
+            "\t-N,\t--total-samples <Number>\t= Set total number of samples to use when calculating. If using the FFT, it rounds up to the next power of 2 samples, zero-padding the signal if necessary.\n"
             "\t-p,\t--precision <Number>\t\t= Decimal number to define how many decimal places to output.\n"
             "\t-s,\t--sampling-frequency <Number>\t= Specify sampling frequency, only used when showing the frequency bins.\n"
+            "\t-w,\t--window <Window>\t\t= Select a windowing function. Choose between 'rectangular', 'hann', 'hamming', and 'blackman'.\n"
             "\t-q,\t--quiet\t\t\t\t= Silence all status messages to stdout. Overwrites '--timer' and '--info'.\n"
             "\t-b,\t--show-bins\t\t\t= Show the frequency bins in the output.\n"
             "\t--pow,\t--power-spectrum\t\t= Output the power spectrum instead of the DFT itself.\n"
             "\t--half,\t--output-half\t\t\t= Output only half of the result.\n"
             "\t--shift,--fft-shift\t\t\t= Shift the result between -N/2 and N/2.\n"
             "\n"
-          );
+            );
+
+    return 0;
 }
 
