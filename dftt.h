@@ -517,14 +517,33 @@ char* get_datetime_string();
 void generate_file_name(char* ofile, char* ibuff, uint8_t input_flag);
 
 /**
+ * @brief Print the frequency bin along with a separator.
+ *
+ * @param file File buffer.
+ * @param freq_bin Frequency bin to print.
+ * @param bins_flag Flag to check if it will be printed.
+ * @param separator Separator.
+ */
+void print_freq_bin(FILE* file, double freq_bin, uint8_t bins_flag, char separator[4]);
+
+/**
+ * @brief Check if the value is a negative zero and if it is set it as a positive zero.
+ *
+ * @param x Value to check.
+ */
+void check_neg_zero(double* x);
+
+/**
  * @brief Output column headings. Used in CSV outputs.
  *
  * @param file FILE buffer.
  * @param bins_flag Flag to check if bins are outputed.
  * @param pow_flag Flag to check if power spectrum is outputed.
  * @param pow_flag Flag to output column headers.
+ *
+ * @return Byte containing flag values.
  */
-void print_csv_headings(FILE* file, uint8_t bins_flag, uint8_t pow_flag, uint8_t headers_flag);
+uint8_t print_csv_headings(FILE* file, uint8_t headers_flag, uint8_t pow_flag, uint8_t bins_flag);
 
 /**
  * @brief Output to stdout in columns.

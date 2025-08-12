@@ -3,9 +3,9 @@
 //TODO: Plotting? Create a dfttplot? Figure out gnuplot?
 //TODO: Add dB units for power spectrum?
 //TODO: More FFT algorithms! RadixM? Have a -M option.
-//TODO: Add slicing the input
 //TODO: Add DFT for any file as binary
 //TODO: Implement imaginary number input
+//TODO: Add different format to the output like \g
 
 int main (int argc, char** argv) {
     double* x;                  // Input data
@@ -13,7 +13,7 @@ int main (int argc, char** argv) {
     double** X_RIB = NULL;      // Array containing the real, and imaginary data, and frequency bins.
     dftt_config_t dftt_conf;    // Tool config
 
-    printf("DFTT start.\n");
+    printf("-DFTT START-\n");
 
     /* Set defaults to ensure certain behaviour */
     set_defaults(&dftt_conf);

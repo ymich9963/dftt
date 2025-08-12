@@ -157,7 +157,7 @@ int get_options(int argc, char** restrict argv, dftt_config_t* restrict dftt_con
             continue;
         }
 
-        if (!(strcmp("-b", argv[i])) || !(strcmp("--show-bins", argv[i]))) {
+        if (!(strcmp("-b", argv[i])) || !(strcmp("--bins", argv[i]))) {
             dftt_conf->bins_flag = 1; 
             continue;
         }
@@ -172,7 +172,7 @@ int get_options(int argc, char** restrict argv, dftt_config_t* restrict dftt_con
             continue;
         }
 
-        if (!(strcmp("--normalise", argv[i]))) {
+        if (!(strcmp("--norm", argv[i])) || !(strcmp("--normalise", argv[i]))) {
             dftt_conf->norm_flag = 1; 
             continue;
         }
@@ -263,7 +263,7 @@ int read_audio_file_input(dftt_config_t* restrict dftt_conf, double** restrict x
 
     /* Initialise input file buffer and open he input file */
     file = NULL;
-    open_audio_file(&file, &sf_info, dftt_conf->ibuff);
+    CHECK_ERR(open_audio_file(&file, &sf_info, dftt_conf->ibuff));
 
     /* Initialise input data array and read the input audio file */
     file_data = NULL; 
@@ -305,10 +305,9 @@ int get_audio_file_data(SNDFILE* restrict file, SF_INFO* restrict sf_info, doubl
 
     /* Read data and place into buffer */
     sf_count_t sf_count = sf_readf_double(file, *x, data_size);
-
     /* Check */
     if (sf_count != sf_info->frames) {
-        fprintf(stderr, "\nRead count not equal to requested frames, %lld != %lld.\n\n", sf_count, sf_info->frames);
+        fprintf(stderr, "\nRead count not equal to requested frames, %lld != %lld.\n", sf_count, sf_info->frames);
 
         return 1;
     }
@@ -625,7 +624,6 @@ int select_fft_algo(dftt_config_t* restrict dftt_conf, char* restrict strval)
 void check_timer_start(dftt_config_t* restrict dftt_conf)
 {
     if (dftt_conf->timer_flag && !dftt_conf->quiet_flag) {
-        // dftt_conf->start_time = clock();
         timespec_get(&dftt_conf->start_time, TIME_UTC);
         printf("Started timer.\n");
     }
@@ -772,8 +770,6 @@ void dft(dftt_config_t* restrict dftt_conf, double complex* restrict X, double* 
             X[k] += (x[n] * cos(2 * M_PI * n * k / N)) - (I * x[n] * sin(2 * M_PI * n * k / N));
         }
     }
-
-    STATUS(dftt_conf->quiet_flag, "Finished.\n");
 }
 
 void butterfly_dit(double complex* restrict X, double complex* restrict X_copy, size_t k)
@@ -849,8 +845,6 @@ void fft_radix2_dit(dftt_config_t* restrict dftt_conf, double complex* restrict 
     /* Execute butterfly and twiddle factor calculations */
     butterfly_dit(X, X_copy, dftt_conf->total_samples);
     STATUS(dftt_conf->quiet_flag, "Executed butterfly procedure.\n");
-
-    STATUS(dftt_conf->quiet_flag, "Finished.\n");
 }
 
 void fft_radix2_dif(dftt_config_t* restrict dftt_conf, double complex* restrict X, double* restrict x)
@@ -874,14 +868,12 @@ void fft_radix2_dif(dftt_config_t* restrict dftt_conf, double complex* restrict 
     /* Re-order the data based on the bit-reversed indexes */
     reorder_data_dif(index_arr, X, dftt_conf->total_samples);
     STATUS(dftt_conf->quiet_flag, "Re-ordered data based on the new index array.\n");
-
-    STATUS(dftt_conf->quiet_flag, "Finished.\n");
 }
 
 int get_freq_bins(double* restrict X_bins, size_t f_s, size_t size)
 {
     if (!f_s) {
-        fprintf(stderr, "\nPlease specify the sampling frequency of the data with '-s' or '--sampling-frequency'.\n");
+        fprintf(stderr, "\n To calculate frequency bins, specify the sampling frequency of the data with '-s/--sampling-frequency'.\n");
         return 1;
     }
 
@@ -894,7 +886,7 @@ int get_freq_bins(double* restrict X_bins, size_t f_s, size_t size)
 
 void parse_complex_buff_to_RIB(double complex* restrict X, double*** restrict X_RIB, size_t size)
 {
-    /* Allocate 3D array */
+    /* Allocate 2D array */
     *X_RIB = malloc(3 * sizeof(double*));
 
     (*X_RIB)[FREQ_BINS_INDEX] = malloc(size * sizeof(double));
@@ -965,7 +957,7 @@ void fft_shift(double** restrict X_RIB, size_t size)
         }
     }
 
-    double f_s = 2*X_RIB[FREQ_BINS_INDEX][0];
+    double f_s = 2 * X_RIB[FREQ_BINS_INDEX][0];
     for (size_t i = 0; i < size; i++) {
         /* If the loop reaches the 0 bin, exit */
         if (X_RIB[FREQ_BINS_INDEX][i] == 0) {
@@ -991,7 +983,7 @@ void prep_outp(dftt_config_t* restrict dftt_conf, double** restrict X_RIB)
     }
 
     if (dftt_conf->bins_flag) {
-        get_freq_bins(X_RIB[FREQ_BINS_INDEX], dftt_conf->sampling_freq, dftt_conf->total_samples);
+        CHECK_ERR(get_freq_bins(X_RIB[FREQ_BINS_INDEX], dftt_conf->sampling_freq, dftt_conf->total_samples));
         STATUS(dftt_conf->quiet_flag, "Calculated frequency bins.\n");
     }
 
@@ -1044,37 +1036,44 @@ void generate_file_name(char* restrict ofile, char* restrict ifile, uint8_t inpu
 }
 
 //TODO: Add optional precision for frequency bins
-void print_freq_bin(FILE* file, double freq_bin, uint8_t bins_flag, char separator[4])
+void print_freq_bin(FILE* restrict file, double freq_bin, uint8_t bins_flag, char separator[4])
 {
     if (bins_flag) {
         fprintf(file, "%.0f%s", freq_bin, separator);
     }
 }
 
-//TODO: Probably could make this better
-// Add a flag to not use the headers, 
-void print_csv_headings(FILE* file, uint8_t bins_flag, uint8_t pow_flag, uint8_t headers_flag)
+void check_neg_zero(double* restrict x)
+{
+    if (*x == 0.0f && signbit(*x)) {
+        *x = +0.0f;
+    }
+}
+
+uint8_t print_csv_headings(FILE* restrict file, uint8_t headers_flag, uint8_t pow_flag, uint8_t bins_flag)
 {
     uint8_t flag_check = (headers_flag << 2) | (pow_flag << 1) | bins_flag;
 
     switch (flag_check) {
         case (0b100):
-            fprintf(file, "Real,Imag"); 
+            fprintf(file, "Real,Imag\n"); 
             break;
         case (0b110):
-            fprintf(file, "Bins,Real,Imag"); 
+            fprintf(file, "Bins,Real,Imag\n"); 
             break;
         case (0b111):
-            fprintf(file, "Bins,Pow"); 
+            fprintf(file, "Bins,Pow\n"); 
             break;
         case (0b101):
-            fprintf(file, "Pow"); 
+            fprintf(file, "Pow\n"); 
             break;
         default:
             /* If the headers_flag is not set it goes to the default branch */
+            flag_check = 0b0;
             break;
     }
-    fprintf(file, "\n"); 
+
+    return flag_check;
 }
 
 int output_stdout(dftt_config_t* dftt_conf, double** X_RIB)
@@ -1088,6 +1087,7 @@ int output_stdout(dftt_config_t* dftt_conf, double** X_RIB)
         print_freq_bin(file, X_RIB[FREQ_BINS_INDEX][i], dftt_conf->bins_flag, ":\t");
         fprintf(file, dftt_conf->format, X_RIB[REAL_DATA_INDEX][i]);
         if (!dftt_conf->pow_flag) {
+            check_neg_zero(&X_RIB[IMAG_DATA_INDEX][i]);
             fprintf(file, X_RIB[IMAG_DATA_INDEX][i] >= 0 ? " + j" : " - j");
             fprintf(file, dftt_conf->format, fabs(X_RIB[IMAG_DATA_INDEX][i]));
         }
@@ -1109,10 +1109,12 @@ int output_stdout_csv(dftt_config_t* dftt_conf, double** X_RIB)
         fprintf(file, dftt_conf->format, X_RIB[REAL_DATA_INDEX][i]);
         if (!dftt_conf->pow_flag) {
             fprintf(file, ",");
+            check_neg_zero(&X_RIB[IMAG_DATA_INDEX][i]);
             fprintf(file, dftt_conf->format, fabs(X_RIB[IMAG_DATA_INDEX][i]));
         }
         fprintf(file, ";");
     }
+    fprintf(file, "\n");
 
     return 0;
 }
@@ -1130,6 +1132,7 @@ int output_file_columns(dftt_config_t* dftt_conf, double** X_RIB)
         print_freq_bin(file, X_RIB[FREQ_BINS_INDEX][i], dftt_conf->bins_flag, ":\t");
         fprintf(file, dftt_conf->format, X_RIB[REAL_DATA_INDEX][i]);
         if (!dftt_conf->pow_flag) {
+            check_neg_zero(&X_RIB[IMAG_DATA_INDEX][i]);
             fprintf(file, X_RIB[IMAG_DATA_INDEX][i] >= 0 ? " + j" : " - j");
             fprintf(file, dftt_conf->format, fabs(X_RIB[IMAG_DATA_INDEX][i]));
         }
@@ -1160,6 +1163,7 @@ int output_file_csv(dftt_config_t* dftt_conf, double** X_RIB)
         fprintf(file, dftt_conf->format, X_RIB[REAL_DATA_INDEX][i]);
         if (!dftt_conf->pow_flag) {
             fprintf(file, ",");
+            check_neg_zero(&X_RIB[IMAG_DATA_INDEX][i]);
             fprintf(file, dftt_conf->format, X_RIB[IMAG_DATA_INDEX][i]);
         }
         fprintf(file, "\n");
@@ -1175,8 +1179,7 @@ int output_file_csv(dftt_config_t* dftt_conf, double** X_RIB)
 
 int output_file_hex_dump(dftt_config_t* dftt_conf, double** X_RIB)
 {
-    int sections = 0;
-
+    uint8_t sections = 0;
     FILE* file = fopen(dftt_conf->ofile, "wb");
     if(!(file)) {
         fprintf(stderr, "\nError, unable to open output file.\n\n");
@@ -1190,10 +1193,14 @@ int output_file_hex_dump(dftt_config_t* dftt_conf, double** X_RIB)
     }
 
     fwrite(X_RIB[REAL_DATA_INDEX], sizeof(double), dftt_conf->total_samples, file);
-    fwrite(X_RIB[IMAG_DATA_INDEX], sizeof(double), dftt_conf->total_samples, file);
-    sections += 2;
+    sections++;
 
-    fprintf(stdout, "Data covers %d x %llud byte sections.", sections, sizeof(double) * dftt_conf->total_samples);
+    if (dftt_conf->pow_flag) {
+        fwrite(X_RIB[IMAG_DATA_INDEX], sizeof(double), dftt_conf->total_samples, file);
+        sections++;
+    }
+
+    fprintf(stdout, "Data covers %d x %llud byte sections.\n", sections, sizeof(double) * dftt_conf->total_samples);
 
     fclose(file);
     return 0;
@@ -1210,6 +1217,17 @@ int output_file_c_array(dftt_config_t* dftt_conf, double** X_RIB)
 
     fprintf(file, "#define DFT_ARR_SIZE\t%lld\n\n", dftt_conf->total_samples);
 
+    if (dftt_conf->bins_flag) {
+        fprintf(file, "X_Bins[DFT_ARR_SIZE] = [");
+        for (size_t i = 0; i < (dftt_conf->total_samples) - 1; i++){
+            fprintf(file, dftt_conf->format, X_RIB[FREQ_BINS_INDEX][i]);
+            fprintf(file, ", ");
+        }
+
+        fprintf(file, dftt_conf->format, X_RIB[FREQ_BINS_INDEX][dftt_conf->total_samples]);
+        fprintf(file, "];\n\n");
+    }
+
     if (dftt_conf->pow_flag) {
         fprintf(file, "X_Pow[DFT_ARR_SIZE] = [");
     } else {
@@ -1222,25 +1240,25 @@ int output_file_c_array(dftt_config_t* dftt_conf, double** X_RIB)
     }
 
     fprintf(file, dftt_conf->format, X_RIB[REAL_DATA_INDEX][dftt_conf->total_samples]);
-    fprintf(file, "]\n\n");
+    fprintf(file, "];\n\n");
 
     if (!dftt_conf->pow_flag) {
         fprintf(file, "X_imag[DFT_ARR_SIZE] = [");
 
         for (size_t i = 0; i < (dftt_conf->total_samples) - 1; i++){
+            check_neg_zero(&X_RIB[IMAG_DATA_INDEX][i]);
             fprintf(file, dftt_conf->format, X_RIB[IMAG_DATA_INDEX][i]);
             fprintf(file, ", ");
         }
 
         fprintf(file, dftt_conf->format, X_RIB[IMAG_DATA_INDEX][dftt_conf->total_samples]);
-        fprintf(file, "]\n\n");
+        fprintf(file, "];\n\n");
     }
 
     fclose(file);
     return 0;
 }
 
-//TODO: Increase timer resolution
 void check_timer_end_output(dftt_config_t* dftt_conf)
 {
     if (dftt_conf->timer_flag && !dftt_conf->quiet_flag) {
@@ -1269,10 +1287,12 @@ int output_help()
             "\t-s,\t--sampling-frequency <Number>\t= Specify sampling frequency, only used when showing the frequency bins.\n"
             "\t-w,\t--window <Window>\t\t= Select a windowing function. Choose between 'rectangular', 'hann', 'hamming', and 'blackman'.\n"
             "\t-q,\t--quiet\t\t\t\t= Silence all status messages to stdout. Overwrites '--timer' and '--info'.\n"
-            "\t-b,\t--show-bins\t\t\t= Show the frequency bins in the output.\n"
+            "\t-b,\t--bins\t\t\t\t= Show the frequency bins in the output.\n"
             "\t--pow,\t--power-spectrum\t\t= Output the power spectrum instead of the DFT itself.\n"
+            "\t--norm,\t--normalise\t\t= Normalise the data. Only works wit --pow.\n"
             "\t--half,\t--output-half\t\t\t= Output only half of the result.\n"
             "\t--shift,--fft-shift\t\t\t= Shift the result between -N/2 and N/2.\n"
+            "\t--no-headers\t\t\t= No headers in the output.\n"
             "\n"
             );
 

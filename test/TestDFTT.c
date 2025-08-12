@@ -37,8 +37,6 @@ void reset(char** argv, dftt_config_t* dftt_conf, int size) {
     for(int i = 0; i < size; i++) {
         argv[i] = "\0";
     }
-    // dftt_config_t x = { 0 };
-    // *dftt_conf = x;
 }
 
 void test_get_options() {
@@ -66,13 +64,18 @@ void test_get_options() {
     TEST_ASSERT_EQUAL_INT(1, get_options(argc, argv, &dftt_conf));
     reset(argv, &dftt_conf, argc);
 
-    char cmd4[] = "first test.wav --input-audio test.wav --input-csv 1,0,1,0 --output otest.txt --output-format csv --total-samples 1 --sampling-frequency 1 --precision 1 --window rectangular --fft radix2-dit --dft --timer --info --quiet --show-bins --power-spectrum --output-half --normalise --shift";
+    char cmd4[] = "first test.wav --input-audio test.wav --input-csv 1,0,1,0 --output otest.txt --output-format csv --total-samples 1 --sampling-frequency 1 --precision 1 --window rectangular --fft radix2-dit --dft --timer --info --quiet --bins --power-spectrum --output-half --normalise --shift --timer";
     split(cmd4, argv, &argc);
     TEST_ASSERT_EQUAL_INT(0, get_options(argc, argv, &dftt_conf));
     reset(argv, &dftt_conf, argc);
 
     char cmd5[] = "first -i test.wav -o otest.txt -f csv -N 1 -s 1 -p 1 -w rectangular -q -b --pow --half --shift --no-headers";
     split(cmd5, argv, &argc);
+    TEST_ASSERT_EQUAL_INT(0, get_options(argc, argv, &dftt_conf));
+    reset(argv, &dftt_conf, argc);
+
+    char cmd6[] = "first 1,0,0,1";
+    split(cmd6, argv, &argc);
     TEST_ASSERT_EQUAL_INT(0, get_options(argc, argv, &dftt_conf));
     reset(argv, &dftt_conf, argc);
 }
@@ -141,6 +144,11 @@ void test_get_audio_file_data() {
     open_audio_file(&sndfile, &sf_info, ibuff);
 
     TEST_ASSERT_EQUAL_INT(0, get_audio_file_data(sndfile, &sf_info, &x));
+
+    open_audio_file(&sndfile, &sf_info, ibuff);
+
+    sf_info.frames = 1e6;
+    TEST_ASSERT_EQUAL_INT(1, get_audio_file_data(sndfile, &sf_info, &x));
 }
 
 void test_output_audio_file_info() {
@@ -360,11 +368,13 @@ void test_zero_pad_array() {
         arr[i] = 1.0f;
     }
 
-    zero_pad_array(&arr, new_size, old_size);
+    TEST_ASSERT_EQUAL_INT(0, zero_pad_array(&arr, new_size, old_size));
 
     for (int i = 0; i < new_size; i++) {
         TEST_ASSERT_EQUAL_INT(expected[i], arr[i]);
     }
+
+    TEST_ASSERT_EQUAL_INT(1, zero_pad_array(&arr, (size_t)-1, (size_t)-1));
 }
 
 void test_truncate_array() {
@@ -378,11 +388,13 @@ void test_truncate_array() {
         arr[i] = 1.0f;
     }
 
-    truncate_array(&arr, new_size);
+    TEST_ASSERT_EQUAL_INT(0, truncate_array(&arr, new_size));
 
     for (int i = 0; i < new_size; i++) {
         TEST_ASSERT_EQUAL_INT(expected[i], arr[i]);
     }
+
+    TEST_ASSERT_EQUAL_INT(1, truncate_array(&arr, (size_t)-1));
 }
 
 void test_nextpow2() {
@@ -414,7 +426,7 @@ void test_set_transform_size() {
     for (size_t i = 0; i < dftt_conf.detected_samples; i++) {
         x[i] = 1.0f;
     }
-    
+
     /* Test that the array will be zero padded */
     set_transform_size(&dftt_conf, &X, &x);
     TEST_ASSERT_EQUAL_INT(8, dftt_conf.total_samples);
@@ -445,7 +457,7 @@ void test_index_bit_reversal() {
 
     size_t* index_arr = calloc(index_arr_size, sizeof(size_t));
     index_bit_reversal(index_arr, index_arr_size);
-    
+
     for (int i = 0; i < index_arr_size; i++) {
         TEST_ASSERT_EQUAL_INT(expected_index_arr[i], index_arr[i]);
     }
@@ -483,7 +495,7 @@ void test_convert_to_complex() {
     double complex* X = calloc(size, sizeof(double complex));
 
     convert_to_complex(x, X, size);
-    
+
     for (int i = 0; i < size; i++) {
         TEST_ASSERT_EQUAL_INT(1, creal(X[i]));
         TEST_ASSERT_EQUAL_INT(0, cimag(X[i]));
@@ -564,8 +576,8 @@ void test_butterfly_dif() {
 
 void test_fft_radix2_dit() {
     dftt_config_t dftt_conf = {
-       .total_samples = 4,
-       .quiet_flag = 0,
+        .total_samples = 4,
+        .quiet_flag = 0,
     };
 
     double x[] = {1,0,0,1};
@@ -583,8 +595,8 @@ void test_fft_radix2_dit() {
 
 void test_fft_radix2_dif() {
     dftt_config_t dftt_conf = {
-       .total_samples = 4,
-       .quiet_flag = 0,
+        .total_samples = 4,
+        .quiet_flag = 0,
     };
 
     double data[] = {1,0,0,1};
@@ -613,18 +625,147 @@ void test_get_freq_bins() {
     for (int i = 0; i < size; i++) {
         TEST_ASSERT_DOUBLE_WITHIN(1e-12, X_bins_expected[i], X_bins[i]);
     }
+
+    TEST_ASSERT_EQUAL_INT(1, get_freq_bins(X_bins, 0, size));
 }
 
 void test_parse_complex_buff_to_RIB() {
+    size_t size = 4;
+    double complex* X = malloc(size * sizeof(double complex));
+    double** X_RIB;
 
+    /* Initialise X */
+    for (int i = 0; i < size; i++) {
+        X[i] = 1 + (1 * I);
+    }
+
+    parse_complex_buff_to_RIB(X, &X_RIB, size);
+
+    for (int i = 0; i < size; i++) {
+        TEST_ASSERT_DOUBLE_WITHIN(1e-12, -1, X_RIB[FREQ_BINS_INDEX][i]);
+    }
+    for (int i = 0; i < size; i++) {
+        TEST_ASSERT_DOUBLE_WITHIN(1e-12, 1, X_RIB[REAL_DATA_INDEX][i]);
+    }
+    for (int i = 0; i < size; i++) {
+        TEST_ASSERT_DOUBLE_WITHIN(1e-12, 1, X_RIB[IMAG_DATA_INDEX][i]);
+    }
 }
- 
+
 void test_set_precision_format() {
     char format[9];
 
     set_precision_format(format, 5);
 
     TEST_ASSERT_EQUAL_STRING("%.5lf", format);
+}
+
+void test_get_pow_spectrum() {
+    double X_real[] = {1,1,1,1};
+    double X_imag[] = {1,1,1,1};
+    size_t size = 4;
+
+    get_pow_spectrum(X_real, X_imag, size);
+
+    for (int i = 0; i < size; i++) {
+        TEST_ASSERT_DOUBLE_WITHIN(1e-12, 0.5f, X_real[i]);
+        TEST_ASSERT_DOUBLE_WITHIN(1e-12, -1.0f, X_imag[i]);
+    }
+}
+
+void test_normalise_data() {
+    double x[] = {1,2,3,4};
+    size_t size = 4;
+
+    normalise_data(x, size);
+
+    double x_expected[] = {0.25,0.5,0.75,1};
+    for (int i = 0; i < size; i++) {
+        TEST_ASSERT_DOUBLE_WITHIN(1e-12, x_expected[i], x[i]);
+    }
+
+}
+
+void test_fft_shift() {
+    /* Tests for even inputs */
+    double** X_RIB_even;
+    double complex X_even[] = {1+1I,2+2I,3+3I,4+4I};
+    double freq_bins_even[] = {0,1,2,3};
+    size_t size = 4;
+
+    parse_complex_buff_to_RIB(X_even, &X_RIB_even, size);
+
+    /* Add values to the freq bin index */
+    for (int i = 0; i < size; i++) {
+        X_RIB_even[FREQ_BINS_INDEX][i] = freq_bins_even[i];
+    }
+
+    fft_shift(X_RIB_even, size);
+
+    double complex X_even_expected[] = {3+3I,4+4I,1+1I,2+2I,};
+    double freq_bins_even_expected[] = {-2,-1,0,1};
+    for (int i = 0; i < size; i++) {
+        /* For the purposes of this test freq bins are the real data */
+        TEST_ASSERT_DOUBLE_WITHIN(1e-12, freq_bins_even_expected[i], X_RIB_even[FREQ_BINS_INDEX][i]);
+        TEST_ASSERT_DOUBLE_WITHIN(1e-12, creal(X_even_expected[i]), X_RIB_even[REAL_DATA_INDEX][i]);
+        TEST_ASSERT_DOUBLE_WITHIN(1e-12, cimag(X_even_expected[i]), X_RIB_even[IMAG_DATA_INDEX][i]);
+    }
+
+    /* Tests for odd inputs */
+    double** X_RIB_odd;
+    double complex X_odd[] = {1+1I,2+2I,3+3I,4+4I,5+5I};
+    double freq_bins_odd[] = {0,1,2,3,4};
+    size = 5;
+
+    parse_complex_buff_to_RIB(X_odd, &X_RIB_odd, size);
+
+    /* Add values to the freq bin index */
+    for (int i = 0; i < size; i++) {
+        X_RIB_odd[FREQ_BINS_INDEX][i] = freq_bins_odd[i];
+    }
+
+    fft_shift(X_RIB_odd, size);
+
+    double complex X_odd_expected[] = {4+4I,5+5I,1+1I,2+2I,3+3I};
+    double freq_bins_odd_expected[] = {-3,-2,0,1,2};
+    for (int i = 0; i < size; i++) {
+        /* For the purposes of this test freq bins are the real data */
+        TEST_ASSERT_DOUBLE_WITHIN(1e-12, freq_bins_odd_expected[i], X_RIB_odd[FREQ_BINS_INDEX][i]);
+        TEST_ASSERT_DOUBLE_WITHIN(1e-12, creal(X_odd_expected[i]), X_RIB_odd[REAL_DATA_INDEX][i]);
+        TEST_ASSERT_DOUBLE_WITHIN(1e-12, cimag(X_odd_expected[i]), X_RIB_odd[IMAG_DATA_INDEX][i]);
+    }
+}
+
+void test_prep_outp() {
+    dftt_config_t dftt_conf = {
+        .pow_flag = 1,
+        .norm_flag = 1,
+        .bins_flag = 1,
+        .shift_flag = 1,
+        .half_flag = 1,
+        .quiet_flag = 0,
+        .total_samples = 4,
+        .sampling_freq = 1000,
+        .precision = 5,
+    };
+    size_t size = 4;
+    double complex* X = malloc(size * sizeof(double complex));
+    double** X_RIB;
+
+    /* Initialise X */
+    for (int i = 0; i < size; i++) {
+        X[i] = i + (i * I);
+    }
+
+    parse_complex_buff_to_RIB(X, &X_RIB, size);
+
+    prep_outp(&dftt_conf, X_RIB);
+
+    /* INFO: Could test the function results again but they've 
+     * been tested independently so I won't do that 
+     */
+
+    TEST_ASSERT_EQUAL_INT(2, dftt_conf.total_samples);
 }
 
 void test_get_datetime_string() {
@@ -637,14 +778,197 @@ void test_generate_file_name() {
 
     memset(ofile, '\0', MAX_STR);
     generate_file_name(ofile, ifile, 0);
-
-    TEST_ASSERT_EQUAL_INT(0, strncmp(ofile, "adx-test-", 9));
+    TEST_ASSERT_EQUAL_INT(0, strncmp(ofile, "dftt-test-", 10));
     TEST_ASSERT_EQUAL_INT(0, strncmp(strrev(ofile), "txt.", 4));
-    TEST_ASSERT_EQUAL_INT(strlen("adx-test-ddmmyyHHMMSS.txt"), strlen(ofile));
+    TEST_ASSERT_EQUAL_INT(strlen("dftt-test-ddmmyyHHMMSS.txt"), strlen(ofile));
+
+    memset(ofile, '\0', MAX_STR);
+    generate_file_name(ofile, ifile, 1);
+    TEST_ASSERT_EQUAL_INT(0, strncmp(ofile, "dftt-stringcsv-", 15));
+    TEST_ASSERT_EQUAL_INT(0, strncmp(strrev(ofile), "txt.", 4));
+    TEST_ASSERT_EQUAL_INT(strlen("dftt-stringcsv-ddmmyyHHMMSS.txt"), strlen(ofile));
 
     strcpy(ofile, "test");
     generate_file_name(ofile, ifile, 0);
     TEST_ASSERT_EQUAL_STRING("test", ofile);
+}
+
+void test_print_freq_bin() {
+    double freq_bin = 1000;
+    uint8_t bins_flag = 1;
+    char separator[4] = ":";
+
+    print_freq_bin(stdout, freq_bin, bins_flag, separator);
+    printf("\n");
+    TEST_ONLY();
+}
+
+void test_check_neg_zero() {
+    double x = -0.0f;
+
+    check_neg_zero(&x);
+
+    TEST_ASSERT_EQUAL_DOUBLE(+0.0f,x);
+}
+
+void test_print_csv_headings() {
+    uint8_t ret;
+
+    ret = print_csv_headings(stdout, 1, 1, 1);
+    TEST_ASSERT_EQUAL_UINT8(0b111, ret);
+    ret = print_csv_headings(stdout, 1, 1, 0);
+    TEST_ASSERT_EQUAL_UINT8(0b110, ret);
+    ret = print_csv_headings(stdout, 1, 0, 0);
+    TEST_ASSERT_EQUAL_UINT8(0b100, ret);
+    ret = print_csv_headings(stdout, 1, 0, 1);
+    TEST_ASSERT_EQUAL_UINT8(0b101, ret);
+    ret = print_csv_headings(stdout, 0, 0, 0);
+    TEST_ASSERT_EQUAL_UINT8(0b000, ret);
+    ret = print_csv_headings(stdout, 0, 1, 1);
+    TEST_ASSERT_EQUAL_UINT8(0b000, ret);
+}
+
+void test_output_stdout() {
+    dftt_config_t dftt_conf = {
+        .quiet_flag = 0,
+        .total_samples = 4,
+        .bins_flag = 0,
+        .pow_flag = 0,
+        .format = "%.5lf",
+    };
+    double complex* X = malloc(dftt_conf.total_samples * sizeof(double complex));
+    double** X_RIB;
+
+    /* Initialise X */
+    for (int i = 0; i < dftt_conf.total_samples; i++) {
+        X[i] = i + (i * I);
+    }
+
+    parse_complex_buff_to_RIB(X, &X_RIB, dftt_conf.total_samples);
+
+    TEST_ASSERT_EQUAL_INT(0, output_stdout(&dftt_conf, X_RIB));
+}
+
+void test_output_stdout_csv() {
+    dftt_config_t dftt_conf = {
+        .quiet_flag = 0,
+        .total_samples = 4,
+        .bins_flag = 0,
+        .pow_flag = 0,
+        .format = "%.5lf",
+    };
+    double complex* X = malloc(dftt_conf.total_samples * sizeof(double complex));
+    double** X_RIB;
+
+    /* Initialise X */
+    for (int i = 0; i < dftt_conf.total_samples; i++) {
+        X[i] = i + (i * I);
+    }
+
+    parse_complex_buff_to_RIB(X, &X_RIB, dftt_conf.total_samples);
+
+    TEST_ASSERT_EQUAL_INT(0, output_stdout_csv(&dftt_conf, X_RIB));
+}
+
+void test_output_file_columns() {
+    dftt_config_t dftt_conf = {
+        .quiet_flag = 0,
+        .total_samples = 4,
+        .bins_flag = 0,
+        .pow_flag = 0,
+        .format = "%.5lf",
+        .ofile = "test-out-columns.txt"
+    };
+    double complex* X = malloc(dftt_conf.total_samples * sizeof(double complex));
+    double** X_RIB;
+
+    /* Initialise X */
+    for (int i = 0; i < dftt_conf.total_samples; i++) {
+        X[i] = i + (i * I);
+    }
+
+    parse_complex_buff_to_RIB(X, &X_RIB, dftt_conf.total_samples);
+
+    TEST_ASSERT_EQUAL_INT(0, output_file_columns(&dftt_conf, X_RIB));
+
+    strcpy(dftt_conf.ofile, ".");
+    TEST_ASSERT_EQUAL_INT(1, output_file_columns(&dftt_conf, X_RIB));
+}
+
+void test_output_file_csv() {
+    dftt_config_t dftt_conf = {
+        .quiet_flag = 0,
+        .total_samples = 4,
+        .bins_flag = 0,
+        .pow_flag = 0,
+        .format = "%.5lf",
+        .ofile = "test-out-csv.txt"
+    };
+    double complex* X = malloc(dftt_conf.total_samples * sizeof(double complex));
+    double** X_RIB;
+
+    /* Initialise X */
+    for (int i = 0; i < dftt_conf.total_samples; i++) {
+        X[i] = i + (i * I);
+    }
+
+    parse_complex_buff_to_RIB(X, &X_RIB, dftt_conf.total_samples);
+
+    TEST_ASSERT_EQUAL_INT(0, output_file_csv(&dftt_conf, X_RIB));
+
+    strcpy(dftt_conf.ofile, ".");
+    TEST_ASSERT_EQUAL_INT(1, output_file_csv(&dftt_conf, X_RIB));
+}
+
+void test_output_file_hex_dump() {
+    dftt_config_t dftt_conf = {
+        .total_samples = 4,
+        .bins_flag = 1,
+        .pow_flag = 1,
+        .ofile = "test-out.hex"
+    };
+    double complex* X = malloc(dftt_conf.total_samples * sizeof(double complex));
+    double** X_RIB;
+
+    /* Initialise X */
+    for (int i = 0; i < dftt_conf.total_samples; i++) {
+        X[i] = i + (i * I);
+    }
+
+    parse_complex_buff_to_RIB(X, &X_RIB, dftt_conf.total_samples);
+
+    TEST_ASSERT_EQUAL_INT(0, output_file_hex_dump(&dftt_conf, X_RIB));
+
+    strcpy(dftt_conf.ofile, ".");
+    TEST_ASSERT_EQUAL_INT(1, output_file_hex_dump(&dftt_conf, X_RIB));
+}
+
+void test_output_file_c_array() {
+    dftt_config_t dftt_conf = {
+        .quiet_flag = 0,
+        .total_samples = 4,
+        .bins_flag = 1,
+        .pow_flag = 0,
+        .format = "%.5lf",
+        .ofile = "test-out.h"
+    };
+    double complex* X = malloc(dftt_conf.total_samples * sizeof(double complex));
+    double** X_RIB;
+
+    /* Initialise X */
+    for (int i = 0; i < dftt_conf.total_samples; i++) {
+        X[i] = i + (i * I);
+    }
+
+    parse_complex_buff_to_RIB(X, &X_RIB, dftt_conf.total_samples);
+
+    TEST_ASSERT_EQUAL_INT(0, output_file_c_array(&dftt_conf, X_RIB));
+
+    dftt_conf.pow_flag = 1;
+    TEST_ASSERT_EQUAL_INT(0, output_file_c_array(&dftt_conf, X_RIB));
+
+    strcpy(dftt_conf.ofile, ".");
+    TEST_ASSERT_EQUAL_INT(1, output_file_c_array(&dftt_conf, X_RIB));
 }
 
 int main() {
@@ -687,10 +1011,23 @@ int main() {
     RUN_TEST(test_fft_radix2_dit);
     RUN_TEST(test_fft_radix2_dif);
     RUN_TEST(test_get_freq_bins);
-
+    RUN_TEST(test_parse_complex_buff_to_RIB);
     RUN_TEST(test_set_precision_format);
+    RUN_TEST(test_get_pow_spectrum);
+    RUN_TEST(test_normalise_data);
+    RUN_TEST(test_fft_shift);
+    RUN_TEST(test_prep_outp);
     RUN_TEST(test_get_datetime_string);
     RUN_TEST(test_generate_file_name);
+    RUN_TEST(test_print_freq_bin);
+    RUN_TEST(test_check_neg_zero);
+    RUN_TEST(test_print_csv_headings);
+    RUN_TEST(test_output_stdout);
+    RUN_TEST(test_output_stdout_csv);
+    RUN_TEST(test_output_file_columns);
+    RUN_TEST(test_output_file_csv);
+    RUN_TEST(test_output_file_hex_dump);
+    RUN_TEST(test_output_file_c_array);
 
     return UNITY_END();
 }
