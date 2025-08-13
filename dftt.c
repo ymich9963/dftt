@@ -53,6 +53,8 @@ int get_options(int argc, char** restrict argv, dftt_config_t* restrict dftt_con
         }
     }
 
+    printf("-DFTT START-\n");
+
     for (int i = 1; i < argc; i++) {
         if (argv[i][0] != '-' && argv[i - 1][0] != '-') {
             CHECK_STR_LEN(argv[i]);
@@ -1271,8 +1273,9 @@ void check_timer_end_output(dftt_config_t* dftt_conf)
 
 int output_help()
 {
-    printf(
-            "\nDiscrete Fourier Transform Tool (DFTT) help page:\n\n"
+    printf( "\n"
+            "Discrete Fourier Transform Tool (DFTT) help page.\n\n"
+            "Basic usage 'dftt <Input audio file or CSV file or CSV string> [options]. For list of options see below.\n\n"
             "\t\t--fft <Algo>\t\t\t= Use an FFT algorithm to compute the DFT. Selecte between 'radix2-dit'.\n"
             "\t\t--dft\t\t\t\t= Regular DFT calculation using Euler's formula to expand the summation. Default behaviour, included for completion.\n"
             "\t\t--timer\t\t\t\t= Start a timer to see how long the calculation takes.\n"

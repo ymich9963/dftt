@@ -9,7 +9,7 @@
 
 #define MAX_STR 999
 #define MIN_STR 200
-#define WELCOME_STR "\nDiscrete Fourier Transform Tool (DFTT). Created by Yiannis Michael (ymich9963), 2025.\n\nUse '--version' for version information, or '--help' for the list of options.\n\nSimple usage, 'dftt <Audio File>'.\n\nUsing FFT, 'dftt <Audio File> --fft <FFT algorithm>.\n\n"
+#define WELCOME_STR "\nDiscrete Fourier Transform Tool (DFTT). Created by Yiannis Michael (ymich9963), 2025.\n\nUse '--version' for version information, or '--help' for the list of options.\n\nBasic usage 'dftt <Input audio file or CSV file or CSV string> [options]. For list of options use '--help'.\n"
 #define VERSION_STR "\nDFTT v0.5.0.\n\n"
 #define SND_MAJOR_FORMAT_NUM 27
 #define SND_SUBTYPE_NUM 36
