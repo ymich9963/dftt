@@ -4,6 +4,7 @@
   <img alt="Coverity Scan Build Status"
        src="https://scan.coverity.com/projects/32163/badge.svg"/>
 </a>
+
 Input real-valued data and get the DFT output. Supports audio files and CSV file or string inputs with a variety of output formats. Also supports FFT algorithms. 
 
 ## Features
