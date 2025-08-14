@@ -8,7 +8,7 @@
 //TODO: Add different format to the output like \g
 
 int main (int argc, char** argv) {
-    double* x;                  // Input data
+    double* x = NULL;           // Input data
     double complex* X = NULL;   // Fourier Transform result
     double** X_RIB = NULL;      // Array containing the real, and imaginary data, and frequency bins.
     dftt_config_t dftt_conf;    // Tool config
@@ -52,6 +52,9 @@ int main (int argc, char** argv) {
 
     free(x);
     free(X);
+    free(X_RIB[FREQ_BINS_INDEX]);
+    free(X_RIB[REAL_DATA_INDEX]);
+    free(X_RIB[IMAG_DATA_INDEX]);
     free(X_RIB);
 
     return 0;

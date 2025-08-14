@@ -1,0 +1,35 @@
+# Version: d59b675bea p-2024.6-push-53
+# Command Line: C:\Program Files\cov-analysis-win64-2024.6.1\bin\cov-build.exe --dir cov-int make
+timer                                    ms      calls
+------------------------------------------------------
+cov-build                              2890          1
+  create_or_open emit DB                  0          1
+    open emit DB                          0          1
+  add_string_to_table                     0          6
+  addEmitFileName                         0          1
+  addEnvironmentVars                      0          1
+    add_string_to_table                   0         59
+  Prepare capture                        78          1
+  parse_xml_config_file                  31          2
+  Running build command                1688          1
+  generate_generic_compiler_map         344          1
+    handle_derived_compiler              46         16
+  SecurityDA                             94          1
+  TUInfo::getPrimarySFRow                 0          2
+  (left over)                           655
+
+activity                                 ms      calls
+------------------------------------------------------
+cov-build                              2890          1
+parse_xml_config_file                    31          2
+create_or_open emit DB                    0          1
+open emit DB                              0          1
+add_string_to_table                       0         65
+addEmitFileName                           0          1
+addEnvironmentVars                        0          1
+Prepare capture                          78          1
+Running build command                  1688          1
+generate_generic_compiler_map           344          1
+handle_derived_compiler                  46         16
+SecurityDA                               94          1
+TUInfo::getPrimarySFRow                   0          2

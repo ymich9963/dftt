@@ -247,6 +247,11 @@ void test_read_csv_file_data() {
     TEST_ASSERT_EQUAL_INT(0, read_csv_file_data(file, &data_string));
 
     TEST_ASSERT_EQUAL_STRING("1,0,0,1", data_string);
+
+    file = NULL;
+    TEST_ASSERT_EQUAL_INT(1, read_csv_file_data(file, &data_string));
+
+    free(data_string);
 }
 
 void test_get_data_from_string() {
@@ -334,6 +339,8 @@ void test_mix2mono() {
         TEST_ASSERT_EQUAL_UINT8(expected[i], ((double*)x_mono)[i]);
     }
     TEST_ASSERT_NOT_EQUAL_UINT8(1, ((double*)x_mono)[5]);
+
+    free(x_mono);
 }
 
 void test_select_fft_algo() {
@@ -375,6 +382,8 @@ void test_zero_pad_array() {
     }
 
     TEST_ASSERT_EQUAL_INT(1, zero_pad_array(&arr, (size_t)-1, (size_t)-1));
+
+    free(arr);
 }
 
 void test_truncate_array() {
@@ -395,6 +404,8 @@ void test_truncate_array() {
     }
 
     TEST_ASSERT_EQUAL_INT(1, truncate_array(&arr, (size_t)-1));
+
+    free(arr);
 }
 
 void test_nextpow2() {
@@ -411,7 +422,6 @@ void test_nextpow2() {
 
 void test_set_transform_size() {
     double complex* X;
-    double* x;
     double expected_zero_padded[8] = {1,1,1,1,1,0,0,0};
     double expected_truncated[8] = {1,1,1,1,1,1,1,1};
     dftt_config_t dftt_conf = {
@@ -422,16 +432,16 @@ void test_set_transform_size() {
     };
 
     /* Initialise array */
-    x = malloc(sizeof(double) * dftt_conf.detected_samples);
+    double* x1 = malloc(sizeof(double) * dftt_conf.detected_samples);
     for (size_t i = 0; i < dftt_conf.detected_samples; i++) {
-        x[i] = 1.0f;
+        x1[i] = 1.0f;
     }
 
     /* Test that the array will be zero padded */
-    set_transform_size(&dftt_conf, &X, &x);
+    set_transform_size(&dftt_conf, &X, &x1);
     TEST_ASSERT_EQUAL_INT(8, dftt_conf.total_samples);
     for (int i = 0; i < dftt_conf.total_samples; i++) {
-        TEST_ASSERT_EQUAL_INT(expected_zero_padded[i], x[i]);
+        TEST_ASSERT_EQUAL_INT(expected_zero_padded[i], x1[i]);
     }
 
     /* Test that the array will be truncated */
@@ -439,16 +449,19 @@ void test_set_transform_size() {
     dftt_conf.detected_samples = 10;
 
     /* Initialise array */
-    x = malloc(sizeof(double) * dftt_conf.detected_samples);
+    double* x2 = malloc(sizeof(double) * dftt_conf.detected_samples);
     for (size_t i = 0; i < dftt_conf.detected_samples; i++) {
-        x[i] = 1.0f;
+        x2[i] = 1.0f;
     }
 
-    set_transform_size(&dftt_conf, &X, &x);
+    set_transform_size(&dftt_conf, &X, &x2);
     TEST_ASSERT_EQUAL_INT(8, dftt_conf.total_samples);
     for (int i = 0; i < dftt_conf.total_samples; i++) {
-        TEST_ASSERT_EQUAL_INT(expected_truncated[i], x[i]);
+        TEST_ASSERT_EQUAL_INT(expected_truncated[i], x2[i]);
     }
+
+    free(x1);
+    free(x2);
 }
 
 void test_index_bit_reversal() {
@@ -461,6 +474,8 @@ void test_index_bit_reversal() {
     for (int i = 0; i < index_arr_size; i++) {
         TEST_ASSERT_EQUAL_INT(expected_index_arr[i], index_arr[i]);
     }
+
+    free(index_arr);
 }
 
 void test_reorder_data_dit() {
@@ -500,6 +515,8 @@ void test_convert_to_complex() {
         TEST_ASSERT_EQUAL_INT(1, creal(X[i]));
         TEST_ASSERT_EQUAL_INT(0, cimag(X[i]));
     }
+
+    free(X);
 }
 
 void test_get_twiddle_factor() {
@@ -528,6 +545,8 @@ void test_dft() {
         TEST_ASSERT_DOUBLE_WITHIN(1e-12, X_real_expected[i], creal(X[i]));
         TEST_ASSERT_DOUBLE_WITHIN(1e-12, X_imag_expected[i], cimag(X[i]));
     }
+
+    free(X);
 }
 
 void test_butterfly_dit() {
@@ -536,8 +555,8 @@ void test_butterfly_dit() {
     };
 
     double complex* X = calloc(dftt_conf.total_samples, sizeof(double complex));
+    double complex* X_copy = calloc(dftt_conf.total_samples, sizeof(double complex));
 
-    double complex* X_copy = malloc(sizeof(double complex) * dftt_conf.total_samples);
     for (int i = 0; i < dftt_conf.total_samples; i++) {
         X_copy[i] = creal(1);
     }
@@ -550,6 +569,9 @@ void test_butterfly_dit() {
         TEST_ASSERT_DOUBLE_WITHIN(1e-12, X_real_expected[i], creal(X[i]));
         TEST_ASSERT_DOUBLE_WITHIN(1e-12, X_imag_expected[i], cimag(X[i]));
     }
+
+    free(X);
+    free(X_copy);
 }
 
 void test_butterfly_dif() {
@@ -558,8 +580,8 @@ void test_butterfly_dif() {
     };
 
     double complex* X = calloc(dftt_conf.total_samples, sizeof(double complex));
-
     double complex* X_copy = malloc(sizeof(double complex) * dftt_conf.total_samples);
+
     for (int i = 0; i < dftt_conf.total_samples; i++) {
         X_copy[i] = creal(1);
     }
@@ -572,6 +594,9 @@ void test_butterfly_dif() {
         TEST_ASSERT_DOUBLE_WITHIN(1e-12, X_real_expected[i], creal(X[i]));
         TEST_ASSERT_DOUBLE_WITHIN(1e-12, X_imag_expected[i], cimag(X[i]));
     }
+
+    free(X);
+    free(X_copy);
 }
 
 void test_fft_radix2_dit() {
@@ -591,6 +616,8 @@ void test_fft_radix2_dit() {
         TEST_ASSERT_DOUBLE_WITHIN(1e-12, X_real_expected[i], creal(X[i]));
         TEST_ASSERT_DOUBLE_WITHIN(1e-12, X_imag_expected[i], cimag(X[i]));
     }
+
+    free(X);
 }
 
 void test_fft_radix2_dif() {
@@ -612,6 +639,9 @@ void test_fft_radix2_dif() {
         TEST_ASSERT_DOUBLE_WITHIN(1e-12, X_real_expected[i], creal(X[i]));
         TEST_ASSERT_DOUBLE_WITHIN(1e-12, X_imag_expected[i], cimag(X[i]));
     }
+
+    free(x);
+    free(X);
 }
 
 void test_get_freq_bins() {
@@ -627,6 +657,8 @@ void test_get_freq_bins() {
     }
 
     TEST_ASSERT_EQUAL_INT(1, get_freq_bins(X_bins, 0, size));
+
+    free(X_bins);
 }
 
 void test_parse_complex_buff_to_RIB() {
@@ -650,6 +682,12 @@ void test_parse_complex_buff_to_RIB() {
     for (int i = 0; i < size; i++) {
         TEST_ASSERT_DOUBLE_WITHIN(1e-12, 1, X_RIB[IMAG_DATA_INDEX][i]);
     }
+
+    free(X_RIB[2]);
+    free(X_RIB[1]);
+    free(X_RIB[0]);
+    free(X_RIB);
+    free(X);
 }
 
 void test_set_precision_format() {
@@ -734,6 +772,7 @@ void test_fft_shift() {
         TEST_ASSERT_DOUBLE_WITHIN(1e-12, creal(X_odd_expected[i]), X_RIB_odd[REAL_DATA_INDEX][i]);
         TEST_ASSERT_DOUBLE_WITHIN(1e-12, cimag(X_odd_expected[i]), X_RIB_odd[IMAG_DATA_INDEX][i]);
     }
+
 }
 
 void test_prep_outp() {
@@ -765,7 +804,9 @@ void test_prep_outp() {
      * been tested independently so I won't do that 
      */
 
+
     TEST_ASSERT_EQUAL_INT(2, dftt_conf.total_samples);
+    free(X);
 }
 
 void test_get_datetime_string() {
@@ -847,6 +888,8 @@ void test_output_stdout() {
     parse_complex_buff_to_RIB(X, &X_RIB, dftt_conf.total_samples);
 
     TEST_ASSERT_EQUAL_INT(0, output_stdout(&dftt_conf, X_RIB));
+
+    free(X);
 }
 
 void test_output_stdout_csv() {
@@ -868,6 +911,8 @@ void test_output_stdout_csv() {
     parse_complex_buff_to_RIB(X, &X_RIB, dftt_conf.total_samples);
 
     TEST_ASSERT_EQUAL_INT(0, output_stdout_csv(&dftt_conf, X_RIB));
+
+    free(X);
 }
 
 void test_output_file_columns() {
@@ -893,6 +938,8 @@ void test_output_file_columns() {
 
     strcpy(dftt_conf.ofile, ".");
     TEST_ASSERT_EQUAL_INT(1, output_file_columns(&dftt_conf, X_RIB));
+
+    free(X);
 }
 
 void test_output_file_csv() {
@@ -918,6 +965,8 @@ void test_output_file_csv() {
 
     strcpy(dftt_conf.ofile, ".");
     TEST_ASSERT_EQUAL_INT(1, output_file_csv(&dftt_conf, X_RIB));
+
+    free(X);
 }
 
 void test_output_file_hex_dump() {
@@ -941,6 +990,8 @@ void test_output_file_hex_dump() {
 
     strcpy(dftt_conf.ofile, ".");
     TEST_ASSERT_EQUAL_INT(1, output_file_hex_dump(&dftt_conf, X_RIB));
+
+    free(X);
 }
 
 void test_output_file_c_array() {
@@ -969,6 +1020,8 @@ void test_output_file_c_array() {
 
     strcpy(dftt_conf.ofile, ".");
     TEST_ASSERT_EQUAL_INT(1, output_file_c_array(&dftt_conf, X_RIB));
+
+    free(X);
 }
 
 int main() {

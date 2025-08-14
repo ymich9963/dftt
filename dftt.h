@@ -6,6 +6,7 @@
 #include <complex.h>
 #include <time.h>
 #include <sndfile.h>
+#include <float.h>
 
 #define MAX_STR 999
 #define MIN_STR 200

@@ -276,13 +276,13 @@ int read_audio_file_input(dftt_config_t* restrict dftt_conf, double** restrict x
         mix2mono(&sf_info, file_data, x);
     }
 
-    /* Output info on the inputted file */
-    output_audio_file_info(dftt_conf, &sf_info);
-
     if (!dftt_conf->sampling_freq) {
         dftt_conf->sampling_freq = sf_info.samplerate;
     }
     dftt_conf->detected_samples = sf_info.frames;
+
+    /* Output info on the inputted file */
+    output_audio_file_info(dftt_conf, &sf_info);
 
     return 0;
 }
@@ -375,8 +375,7 @@ const char* get_sndfile_subtype(SF_INFO* restrict sf_info)
 
 int check_csv_string(char* restrict ibuff) {
     /* Make a copy of the string to get the number of data points  */
-    char* data_string_copy;
-    data_string_copy = malloc(sizeof(char) * strlen(ibuff)); 
+    char* data_string_copy = calloc(strlen(ibuff), sizeof(char)); 
     strcpy(data_string_copy, ibuff);
 
     /* Get the number of data points */
@@ -386,6 +385,8 @@ int check_csv_string(char* restrict ibuff) {
         samples++;
         token = strtok(NULL, ",");
     }
+
+    free(data_string_copy);
 
     if (samples > 1) {
         return 0;
@@ -401,7 +402,7 @@ int check_csv_extension(char* restrict ibuff) {
     uint8_t supported_flag = 0;
     int ibuff_len = strlen(ibuff);
 
-    char* ibuff_ext = malloc(ibuff_len *  sizeof(char));
+    char* ibuff_ext = calloc(ibuff_len, sizeof(char));
     memset(ibuff_ext, '\0', ibuff_len);
 
     /* Start from 1 to skip any './' */
@@ -420,6 +421,8 @@ int check_csv_extension(char* restrict ibuff) {
         }
     }
 
+    free(ibuff_ext);
+
     if (!supported_flag) {
         return 1;
     }
@@ -429,19 +432,15 @@ int check_csv_extension(char* restrict ibuff) {
 }
 int read_csv_string_file_input(dftt_config_t* restrict dftt_conf, double** restrict x)
 {
-    FILE* file;          // Pointer to the input audio file
-    char* data_string;   // Input data from file
-
-    /* Initialise */
-    file = NULL;
-    data_string = NULL; 
+    FILE* file = NULL;          // Pointer to the input audio file
+    char* data_string = NULL;   // Input data from file
 
     /* Try to open and read input file, if not then it's considered a data string */
     if (!(open_csv_file(&file, dftt_conf->ibuff))) {
         CHECK_ERR(read_csv_file_data(file, &data_string));
         dftt_conf->input_flag = 0;
     } else {
-        data_string = malloc(sizeof(char) * strlen(dftt_conf->ibuff)); 
+        data_string = calloc(strlen(dftt_conf->ibuff) + 1, sizeof(char)); 
         strcpy(data_string, dftt_conf->ibuff);
         dftt_conf->input_flag = 1;
     }
@@ -467,31 +466,34 @@ int open_csv_file(FILE** restrict file, char* restrict ibuff)
     return 0;
 }
 
-// FIX: Necessary to return 0? Check the returns of functions maybe
 int read_csv_file_data(FILE* restrict file, char** restrict data_string)
 {
     /* Go to the end of the file to find the size needed to store the data */
     fseek(file, 0, SEEK_END);
-    size_t pos = ftell(file);
+
+    long pos = ftell(file);
 
     /* Put the file position indicator back to the start */
-    fseek(file, 0, SEEK_SET);
+    long ret = fseek(file, 0, SEEK_SET);
+    if (ret == -1L || pos < 0) {
+        fprintf(stderr, "Error when trying to read CSV file data.\n");
+
+        return 1;
+    }
 
     /* Allocate the file size */
-    *data_string = malloc(sizeof(char) * pos);
+    *data_string = calloc(pos + 1, sizeof(char));
 
     /* Read the file data and place into string variable */
-    fread(*data_string, sizeof(char), pos, file);
+    fgets(*data_string, pos + 1, file);
 
     return 0;
 }
 
-// FIX: Find a way to return 1 when detected_samples is not the size of the data_string?
 int get_data_from_string(char* restrict data_string, double** restrict x, size_t* restrict detected_samples)
 {
     /* Make a copy of the string to get the number of data points  */
-    char* data_string_copy;
-    data_string_copy = malloc(sizeof(char) * strlen(data_string)); 
+    char* data_string_copy = malloc(sizeof(char) * strlen(data_string)); 
     strcpy(data_string_copy, data_string);
 
     /* Get the number of data points */
@@ -517,6 +519,7 @@ int get_data_from_string(char* restrict data_string, double** restrict x, size_t
     }
 
     *detected_samples = samples;
+    free(data_string_copy);
 
     return 0;
 }
@@ -706,19 +709,18 @@ void index_bit_reversal(size_t* restrict index_arr, size_t n)
     index_arr[0] = 0;
     index_arr[1] = 1;
 
-    for (int k = 4; k <= n; k <<= 1) {
+    for (int c = 4; c <= n; c <<= 1) {
 
-        for (int i = k >> 1; i >= 0; i--) {
-            for (int c = 1; c <= i+1; c++) {
-                index_arr[i+c] = index_arr[i];
-            }
+        for (int i = 0; i < (c >> 1); i++) {
+            index_arr[i] <<= 1;
         }
 
-        for (int j = 1; j < n; j += 2) {
-            index_arr[j] += k >> 1;
+        for (int i = 0; i < (c >> 1); i++) {
+            index_arr[i + (c >> 1)] = index_arr[i] + 1;
         }
 
     }
+
 }
 
 void reorder_data_dit(size_t* restrict index_arr, double* restrict data_arr, size_t data_size)
@@ -841,12 +843,14 @@ void fft_radix2_dit(dftt_config_t* restrict dftt_conf, double complex* restrict 
     /* Create an array to convert the mono input to complex values */
     double complex* X_copy = calloc(dftt_conf->total_samples, sizeof(double complex));
     convert_to_complex(x, X_copy, dftt_conf->total_samples);
-
     STATUS(dftt_conf->quiet_flag, "Converted mono input to complex values.\n");
 
     /* Execute butterfly and twiddle factor calculations */
     butterfly_dit(X, X_copy, dftt_conf->total_samples);
     STATUS(dftt_conf->quiet_flag, "Executed butterfly procedure.\n");
+
+    free(index_arr);
+    free(X_copy);
 }
 
 void fft_radix2_dif(dftt_config_t* restrict dftt_conf, double complex* restrict X, double* restrict x)
@@ -870,6 +874,9 @@ void fft_radix2_dif(dftt_config_t* restrict dftt_conf, double complex* restrict 
     /* Re-order the data based on the bit-reversed indexes */
     reorder_data_dif(index_arr, X, dftt_conf->total_samples);
     STATUS(dftt_conf->quiet_flag, "Re-ordered data based on the new index array.\n");
+
+    free(X_copy);
+    free(index_arr);
 }
 
 int get_freq_bins(double* restrict X_bins, size_t f_s, size_t size)
@@ -910,7 +917,7 @@ void set_precision_format(char format[9], uint8_t precision)
 
 void get_pow_spectrum(double* restrict X_real, double* restrict X_imag, size_t size)
 {
-    double magn_sq = 0.0f;
+    double magn_sq = 1.0f;
     for (size_t i = 0; i < size; i++) {
         magn_sq = (X_real[i] * X_real[i]) + (X_imag[i] * X_imag[i]);
         X_real[i] = magn_sq / size;
@@ -920,7 +927,7 @@ void get_pow_spectrum(double* restrict X_real, double* restrict X_imag, size_t s
 
 void normalise_data(double* restrict x, size_t size)
 {
-    double max_val = 0.0f;
+    double max_val = DBL_MIN;
     for (size_t i = 0; i < size; i++) {
         if (x[i] > max_val) {
             max_val = x[i];
@@ -1158,7 +1165,7 @@ int output_file_csv(dftt_config_t* dftt_conf, double** X_RIB)
         return 1;
     };
 
-    print_csv_headings(file, dftt_conf->bins_flag, dftt_conf->pow_flag, dftt_conf->headers_flag);
+    print_csv_headings(file, dftt_conf->headers_flag, dftt_conf->pow_flag, dftt_conf->bins_flag);
 
     for (size_t i = 0; i < dftt_conf->total_samples; i++) {
         print_freq_bin(file, X_RIB[FREQ_BINS_INDEX][i], dftt_conf->bins_flag, ",");
