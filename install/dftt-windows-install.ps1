@@ -1,5 +1,5 @@
 $DFTT_install_path = 'C:\Program Files\dftt'
-$DFTT_exe_link = "https://github.com/ymich9963/dftt/releases/download/v0.5.0/dftt.exe"
+$DFTT_exe_link = "https://github.com/ymich9963/dftt/releases/latest/download/dftt.exe"
 
 if (Test-Path -Path $DFTT_install_path) {
     Write-Output "Removing previously installed executable."
