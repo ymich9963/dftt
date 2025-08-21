@@ -22,7 +22,6 @@ Input real-valued data and get the DFT output. Supports audio files and CSV file
     - Hex dump.
     - C-style array.
 - High precision output with ability to change precision.
-- Apply windowing to the input with 'rectangular', 'hann', 'hamming', and 'blackman' window functions.
 - Output frequency bins alongside the DFT result.
 - Output the power spectrum of the result.
 - Choose to only output half of the result.
