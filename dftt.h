@@ -11,7 +11,7 @@
 #define MAX_STR 999
 #define MIN_STR 200
 #define WELCOME_STR "\nDiscrete Fourier Transform Tool (DFTT). Created by Yiannis Michael (ymich9963), 2025.\n\nUse '--version' for version information, or '--help' for the list of options.\n\nBasic usage 'dftt <Input audio file or CSV file or CSV string> [options]. For list of options use '--help'.\n"
-#define VERSION_STR "\nDFTT v0.5.0.\n\n"
+#define VERSION_STR "\nDFTT v0.5.1.\n\n"
 #define SND_MAJOR_FORMAT_NUM 27
 #define SND_SUBTYPE_NUM 36
 #define REAL_DATA_INDEX 0
@@ -87,7 +87,6 @@ typedef struct DFTT_Config {
 
     /* Function pointers */
     int (*inp)(dftt_config_t* dftt_conf, double** x);
-    void (*w)(dftt_config_t* dftt_conf, double* x);
     void (*dft)(dftt_config_t* dftt_conf, double _Complex* X, double* x_mono);
     int (*outp)(dftt_config_t* dftt_conf, double** X);
 } dftt_config_t;
@@ -249,47 +248,6 @@ int get_data_from_string(char* data_string, double** x, size_t* detected_samples
  * @return Success or failure.
  */
 int output_input_info(dftt_config_t* dftt_conf);
-
-/**
- * @brief Select the windowing functions based on the input string.
- *
- * @param dftt_conf DFTT Config struct.
- * @param strval Option value.
- * @return Success or failure.
- */
-int select_windowing(dftt_config_t* dftt_conf, char* strval);
-
-/**
- * @brief Rectangular window function.
- *
- * @param dftt_conf DFTT Config struct.
- * @param x Data buffer.
- */
-void window_rectangular(dftt_config_t* dftt_conf, double* x);
-
-/**
- * @brief Hann window function.
- *
- * @param dftt_conf DFTT Config struct.
- * @param x Data buffer.
- */
-void window_hann(dftt_config_t* dftt_conf, double* x);
-
-/**
- * @brief Hamming window function.
- *
- * @param dftt_conf DFTT Config struct.
- * @param x Data buffer.
- */
-void window_hamming(dftt_config_t* dftt_conf, double* x);
-
-/**
- * @brief Blackman window function.
- *
- * @param dftt_conf DFTT Config struct.
- * @param x Data buffer.
- */
-void window_blackman(dftt_config_t* dftt_conf, double* x);
 
 /**
  * @brief Mix the data to mono.

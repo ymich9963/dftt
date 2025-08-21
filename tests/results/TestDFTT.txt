@@ -1,0 +1,214 @@
+TestDFTT.c:984:test_set_defaults:PASS
+
+Discrete Fourier Transform Tool (DFTT) help page.
+
+Basic usage 'dftt <Input audio file or CSV file or CSV string> [options]. For list of options see below.
+
+		--fft <Algo>			= Use an FFT algorithm to compute the DFT. Selecte between 'radix2-dit'.
+		--dft				= Regular DFT calculation using Euler's formula to expand the summation. Default behaviour, included for completion.
+		--timer				= Start a timer to see how long the calculation takes.
+		--info				= Output to stdout some info about the input file.
+	-i,	--input <File/String>	= Accepts audio files and CSV files or strings. Make sure to separate string with commas, e.g. 1,0,0,1. Use the options below if you want to specify but DFTT implements auto-detection.
+		--input-audio
+		--input-csv
+	-o,	--output <File Name>		= Path or name of the output file.
+	-f,	--output-format <Format>	= Format of the output file. Select between: 'stdout', 'stdout-csv', 'columns', 'csv', 'hex-dump', and 'c-array'.
+	-N,	--total-samples <Number>	= Set total number of samples to use when calculating. If using the FFT, it rounds up to the next power of 2 samples, zero-padding the signal if necessary.
+	-p,	--precision <Number>		= Decimal number to define how many decimal places to output.
+	-s,	--sampling-frequency <Number>	= Specify sampling frequency, only used when showing the frequency bins.
+	-q,	--quiet				= Silence all status messages to stdout. Overwrites '--timer' and '--info'.
+	-b,	--bins				= Show the frequency bins in the output.
+	--pow,	--power-spectrum		= Output the power spectrum instead of the DFT itself.
+	--norm,	--normalise		= Normalise the data. Only works wit --pow.
+	--half,	--output-half			= Output only half of the result.
+	--shift,--fft-shift			= Shift the result between -N/2 and N/2.
+	--no-headers			= No headers in the output.
+
+
+No such option '--test'. Please check inputs.
+
+TestDFTT.c:985:test_output_help:PASS
+
+Discrete Fourier Transform Tool (DFTT). Created by Yiannis Michael (ymich9963), 2025.
+
+Use '--version' for version information, or '--help' for the list of options.
+
+Basic usage 'dftt <Input audio file or CSV file or CSV string> [options]. For list of options use '--help'.
+
+DFTT v0.5.0.
+
+
+Discrete Fourier Transform Tool (DFTT) help page.
+
+Basic usage 'dftt <Input audio file or CSV file or CSV string> [options]. For list of options see below.
+
+		--fft <Algo>			= Use an FFT algorithm to compute the DFT. Selecte between 'radix2-dit'.
+		--dft				= Regular DFT calculation using Euler's formula to expand the summation. Default behaviour, included for completion.
+		--timer				= Start a timer to see how long the calculation takes.
+		--info				= Output to stdout some info about the input file.
+	-i,	--input <File/String>	= Accepts audio files and CSV files or strings. Make sure to separate string with commas, e.g. 1,0,0,1. Use the options below if you want to specify but DFTT implements auto-detection.
+		--input-audio
+		--input-csv
+	-o,	--output <File Name>		= Path or name of the output file.
+	-f,	--output-format <Format>	= Format of the output file. Select between: 'stdout', 'stdout-csv', 'columns', 'csv', 'hex-dump', and 'c-array'.
+	-N,	--total-samples <Number>	= Set total number of samples to use when calculating. If using the FFT, it rounds up to the next power of 2 samples, zero-padding the signal if necessary.
+	-p,	--precision <Number>		= Decimal number to define how many decimal places to output.
+	-s,	--sampling-frequency <Number>	= Specify sampling frequency, only used when showing the frequency bins.
+	-q,	--quiet				= Silence all status messages to stdout. Overwrites '--timer' and '--info'.
+	-b,	--bins				= Show the frequency bins in the output.
+	--pow,	--power-spectrum		= Output the power spectrum instead of the DFT itself.
+	--norm,	--normalise		= Normalise the data. Only works wit --pow.
+	--half,	--output-half			= Output only half of the result.
+	--shift,--fft-shift			= Shift the result between -N/2 and N/2.
+	--no-headers			= No headers in the output.
+
+-DFTT START-
+-DFTT START-
+-DFTT START-
+-DFTT START-
+
+Output format 'test' not available.
+TestDFTT.c:986:test_get_options:PASS
+Input is not an audio file or a CSV file/string.
+TestDFTT.c:987:test_select_output_format:PASS
+TestDFTT.c:988:test_read_input:PASS
+
+--INFO--
+File Name: test.wav
+Sample Rate: 48000
+Samples: 48000
+Channels: 2
+Format: WAV (Microsoft)
+Subtype: Signed 16 bit PCM
+---
+
+System error : The system cannot find the file specified.
+
+TestDFTT.c:989:test_read_audio_file_input:PASS
+
+Read count not equal to requested frames, 48000 != 1000000.
+TestDFTT.c:990:test_open_audio_file:PASS
+TestDFTT.c:991:test_get_audio_file_data:PASS
+
+--INFO--
+File Name: test.wav
+Sample Rate: 1
+Samples: 1
+Channels: 1
+Format: WAV (Microsoft)
+Subtype: Signed 8 bit PCM
+---
+
+TestDFTT.c:992:test_output_audio_file_info:PASS
+TestDFTT.c:993:test_get_sndfile_major_format:PASS
+TestDFTT.c:994:test_get_sndfile_subtype:PASS
+TestDFTT.c:995:test_check_csv_string:PASS
+TestDFTT.c:996:test_check_csv_extension:PASS
+TestDFTT.c:997:test_read_csv_string_file_input:PASS
+Error when trying to read CSV file data.
+TestDFTT.c:998:test_open_csv_file:PASS
+TestDFTT.c:999:test_read_csv_file_data:PASS
+TestDFTT.c:1000:test_get_data_from_string:PASS
+
+--INFO--
+Input String: test.txt
+Samples: 4
+Format: CSV String
+--------
+
+TestDFTT.c:1001:test_output_input_info:PASS
+FFT algorithm 'test' not implemented.
+TestDFTT.c:1002:test_mix2mono:PASS
+TestDFTT.c:1003:test_select_fft_algo:PASS
+Started timer.
+Time taken: 0.004985000 seconds
+
+Unable to reallocate input array.
+TestDFTT.c:1004:test_timer:PASS
+
+Unable to reallocate input array.
+TestDFTT.c:1005:test_zero_pad_array:PASS
+TestDFTT.c:1006:test_truncate_array:PASS
+TestDFTT.c:1007:test_nextpow2:PASS
+Adjusted input data size to 8.
+Zero-padded input.
+Adjusted input data size to 8.
+Truncated input.
+TestDFTT.c:1008:test_set_transform_size:PASS
+TestDFTT.c:1009:test_index_bit_reversal:PASS
+TestDFTT.c:1010:test_reorder_data_dit:PASS
+TestDFTT.c:1011:test_reorder_data_dif:PASS
+TestDFTT.c:1012:test_convert_to_complex:PASS
+TestDFTT.c:1013:test_get_twiddle_factor:PASS
+Calculating DFT.
+TestDFTT.c:1014:test_dft:PASS
+TestDFTT.c:1015:test_butterfly_dit:PASS
+TestDFTT.c:1016:test_butterfly_dif:PASS
+Calculating DFT using Radix-2 Decimation In Time.
+Generated bit-reversed index array.
+Re-ordered data based on the new index array.
+Converted mono input to complex values.
+Executed butterfly procedure.
+TestDFTT.c:1017:test_fft_radix2_dit:PASS
+Calculating DFT using Radix-2 Decimation In Frequency.
+Converted mono input to complex values.
+Executed butterfly procedure.
+Generated bit-reversed index array.
+Re-ordered data based on the new index array.
+
+ To calculate frequency bins, specify the sampling frequency of the data with '-s/--sampling-frequency'.
+TestDFTT.c:1018:test_fft_radix2_dif:PASS
+TestDFTT.c:1019:test_get_freq_bins:PASS
+TestDFTT.c:1020:test_parse_complex_buff_to_RIB:PASS
+TestDFTT.c:1021:test_set_precision_format:PASS
+TestDFTT.c:1022:test_get_pow_spectrum:PASS
+TestDFTT.c:1023:test_normalise_data:PASS
+TestDFTT.c:1024:test_fft_shift:PASS
+Calculated power spectrum.
+Normalised the data.
+Calculated frequency bins.
+Shifted the result to be between -N/2 and N/2.
+Will only output up to N/2.
+TestDFTT.c:1025:test_prep_outp:PASS
+TestDFTT.c:1026:test_get_datetime_string:PASS
+TestDFTT.c:1027:test_generate_file_name:PASS
+1000:
+TestDFTT.c:1028:test_print_freq_bin:PASS
+TestDFTT.c:1029:test_check_neg_zero:PASS
+Bins,Pow
+Bins,Real,Imag
+Real,Imag
+Pow
+TestDFTT.c:1030:test_print_csv_headings:PASS
+
+0.00000 + j0.00000
+1.00000 + j1.00000
+2.00000 + j2.00000
+3.00000 + j3.00000
+TestDFTT.c:1031:test_output_stdout:PASS
+
+0.00000,0.00000;1.00000,1.00000;2.00000,2.00000;3.00000,3.00000;
+
+Error, unable to open output file.
+
+TestDFTT.c:1032:test_output_stdout_csv:PASS
+Outputted data to 'test-out-columns.txt'.
+
+Error, unable to open output file.
+
+TestDFTT.c:1033:test_output_file_columns:PASS
+Outputted data to 'test-out-csv.txt'.
+
+Error, unable to open output file.
+
+TestDFTT.c:1034:test_output_file_csv:PASS
+Data covers 3 x 32d byte sections.
+
+Error, unable to open output file.
+
+TestDFTT.c:1035:test_output_file_hex_dump:PASS
+TestDFTT.c:1036:test_output_file_c_array:PASS
+
+-----------------------
+53 Tests 0 Failures 0 Ignored 
+OK

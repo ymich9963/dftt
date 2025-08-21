@@ -64,12 +64,12 @@ void test_get_options() {
     TEST_ASSERT_EQUAL_INT(1, get_options(argc, argv, &dftt_conf));
     reset(argv, &dftt_conf, argc);
 
-    char cmd4[] = "first test.wav --input-audio test.wav --input-csv 1,0,1,0 --output otest.txt --output-format csv --total-samples 1 --sampling-frequency 1 --precision 1 --window rectangular --fft radix2-dit --dft --timer --info --quiet --bins --power-spectrum --output-half --normalise --shift --timer";
+    char cmd4[] = "first test.wav --input-audio test.wav --input-csv 1,0,1,0 --output otest.txt --output-format csv --total-samples 1 --sampling-frequency 1 --precision 1 --fft radix2-dit --dft --timer --info --quiet --bins --power-spectrum --output-half --normalise --shift --timer";
     split(cmd4, argv, &argc);
     TEST_ASSERT_EQUAL_INT(0, get_options(argc, argv, &dftt_conf));
     reset(argv, &dftt_conf, argc);
 
-    char cmd5[] = "first -i test.wav -o otest.txt -f csv -N 1 -s 1 -p 1 -w rectangular -q -b --pow --half --shift --no-headers";
+    char cmd5[] = "first -i test.wav -o otest.txt -f csv -N 1 -s 1 -p 1 -q -b --pow --half --shift --no-headers";
     split(cmd5, argv, &argc);
     TEST_ASSERT_EQUAL_INT(0, get_options(argc, argv, &dftt_conf));
     reset(argv, &dftt_conf, argc);
@@ -277,51 +277,6 @@ void test_output_input_info() {
     };
 
     TEST_ASSERT_EQUAL_INT(0, output_input_info(&dftt_conf));
-}
-
-void test_select_windowing() {
-    dftt_config_t dftt_conf;
-
-    TEST_ASSERT_EQUAL_INT(0, select_windowing(&dftt_conf, "rectangular"));
-    TEST_ASSERT_EQUAL_INT(0, select_windowing(&dftt_conf, "hann"));
-    TEST_ASSERT_EQUAL_INT(0, select_windowing(&dftt_conf, "hamming"));
-    TEST_ASSERT_EQUAL_INT(0, select_windowing(&dftt_conf, "blackman"));
-    TEST_ASSERT_EQUAL_INT(1, select_windowing(&dftt_conf, "test"));
-}
-
-void test_windowing() {
-    dftt_config_t dftt_conf = {
-        .detected_samples = 4,
-        .quiet_flag = 1,
-    };
-
-    double actual1[] = {1,1,1,1};
-    double expected1[] = {1,1,1,1};
-    window_rectangular(&dftt_conf, actual1);
-    for (int i = 0; i < dftt_conf.detected_samples; i++) {
-        TEST_ASSERT_DOUBLE_WITHIN(1e-9,expected1[i], actual1[i]);
-    }
-
-    double actual2[] = {1,1,1,1};
-    double expected2[] = {0,0.75,0.75,0};
-    window_hann(&dftt_conf, actual2);
-    for (int i = 0; i < dftt_conf.detected_samples; i++) {
-        TEST_ASSERT_DOUBLE_WITHIN(1e-9, expected2[i], actual2[i]);
-    }
-
-    double actual3[] = {1,1,1,1};
-    double expected3[] = {0.08,0.77,0.77,0.08};
-    window_hamming(&dftt_conf, actual3);
-    for (int i = 0; i < dftt_conf.detected_samples; i++) {
-        TEST_ASSERT_DOUBLE_WITHIN(1e-9, expected3[i], actual3[i]);
-    }
-
-    double actual4[] = {1,1,1,1};
-    double expected4[] = {-1.387778780781446e-17,0.63,0.63,-1.387778780781446e-17};
-    window_blackman(&dftt_conf, actual4);
-    for (int i = 0; i < dftt_conf.detected_samples; i++) {
-        TEST_ASSERT_DOUBLE_WITHIN(1e-9, expected4[i], actual4[i]);
-    }
 }
 
 void test_mix2mono() {
@@ -1044,8 +999,6 @@ int main() {
     RUN_TEST(test_read_csv_file_data);
     RUN_TEST(test_get_data_from_string);
     RUN_TEST(test_output_input_info);
-    RUN_TEST(test_select_windowing);
-    RUN_TEST(test_windowing);
     RUN_TEST(test_mix2mono);
     RUN_TEST(test_select_fft_algo);
     RUN_TEST(test_timer);

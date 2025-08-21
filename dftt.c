@@ -23,7 +23,6 @@ void set_defaults(dftt_config_t* restrict dftt_conf)
     dftt_conf->shift_flag   = 0;
 
     dftt_conf->inp  = &read_audio_file_input;
-    dftt_conf->w    = &window_rectangular;
     dftt_conf->dft  = &dft;
     dftt_conf->outp = &output_stdout;
 }
@@ -118,13 +117,6 @@ int get_options(int argc, char** restrict argv, dftt_config_t* restrict dftt_con
         if (!(strcmp("-p", argv[i])) || !(strcmp("--precision", argv[i]))) {
             CHECK_RES(sscanf(argv[i + 1], "%d", &dval));
             dftt_conf->precision = dval;
-            i++;
-            continue;
-        }
-
-        if (!(strcmp("-w", argv[i])) || !(strcmp("--window", argv[i]))) {
-            CHECK_STR_LEN(argv[i + 1]);
-            CHECK_RET(select_windowing(dftt_conf, argv[i + 1]));
             i++;
             continue;
         }
@@ -535,62 +527,6 @@ int output_input_info(dftt_config_t* restrict dftt_conf)
     }
 
     return 0;
-}
-
-int select_windowing(dftt_config_t* restrict dftt_conf, char* restrict strval)
-{
-    dftt_conf->w = NULL;
-
-    if (!(strcmp("rectangular", strval))) {
-        dftt_conf->w = &window_rectangular;
-    }
-    if (!(strcmp("hann", strval))) {
-        dftt_conf->w = &window_hann;
-    }
-    if (!(strcmp("hamming", strval))) {
-        dftt_conf->w = &window_hamming;
-    }
-    if (!(strcmp("blackman", strval))) {
-        dftt_conf->w = &window_blackman;
-    } 
-
-    if (!dftt_conf->w){
-        fprintf(stderr, "\nWindowing function '%s' not implemented. Exiting...\n\n", strval);
-
-        return 1;
-    }
-
-    return 0;
-}
-
-void window_rectangular(dftt_config_t* restrict dftt_conf, double* restrict x)
-{
-    /* Do nothing to simulate a rectangualr window of w[n] = 1 */
-    STATUS(dftt_conf->quiet_flag, "Used a rectangular window.\n");
-}
-
-void window_hann(dftt_config_t* restrict dftt_conf, double* restrict x)
-{
-    for (size_t n = 0; n < dftt_conf->detected_samples; n++) {
-        x[n] *= 0.5 - (0.5 * cos((2 * M_PI * n)/(dftt_conf->detected_samples - 1)));
-    }
-    STATUS(dftt_conf->quiet_flag, "Used a Hann window.\n");
-}
-
-void window_hamming(dftt_config_t* restrict dftt_conf, double* restrict x)
-{
-    for (size_t n = 0; n < dftt_conf->detected_samples; n++) {
-        x[n] *= 0.54 - (0.46 * cos((2 * M_PI * n)/(dftt_conf->detected_samples - 1)));
-    }
-    STATUS(dftt_conf->quiet_flag, "Used a Hamming window.\n");
-}
-
-void window_blackman(dftt_config_t* restrict dftt_conf, double* restrict x)
-{
-    for (size_t n = 0; n < dftt_conf->detected_samples; n++) {
-        x[n] *= 0.42 - (0.5 * cos((2 * M_PI * n)/(dftt_conf->detected_samples - 1))) + (0.08 * cos((4 * M_PI * n)/(dftt_conf->detected_samples- 1)));
-    }
-    STATUS(dftt_conf->quiet_flag, "Used a Blackman window.\n");
 }
 
 void mix2mono(SF_INFO* restrict sf_info, double* restrict x, double** restrict x_mono)
@@ -1295,7 +1231,6 @@ int output_help()
             "\t-N,\t--total-samples <Number>\t= Set total number of samples to use when calculating. If using the FFT, it rounds up to the next power of 2 samples, zero-padding the signal if necessary.\n"
             "\t-p,\t--precision <Number>\t\t= Decimal number to define how many decimal places to output.\n"
             "\t-s,\t--sampling-frequency <Number>\t= Specify sampling frequency, only used when showing the frequency bins.\n"
-            "\t-w,\t--window <Window>\t\t= Select a windowing function. Choose between 'rectangular', 'hann', 'hamming', and 'blackman'.\n"
             "\t-q,\t--quiet\t\t\t\t= Silence all status messages to stdout. Overwrites '--timer' and '--info'.\n"
             "\t-b,\t--bins\t\t\t\t= Show the frequency bins in the output.\n"
             "\t--pow,\t--power-spectrum\t\t= Output the power spectrum instead of the DFT itself.\n"

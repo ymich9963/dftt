@@ -22,9 +22,6 @@ int main (int argc, char** argv) {
     /* Execute the read input function  */
     CHECK_ERR(dftt_conf.inp(&dftt_conf, &x));
 
-    /* Execute any potential windowing */
-    dftt_conf.w(&dftt_conf, x);
-
     /* Set the array sizes to be used in the DFT */
     CHECK_ERR(set_transform_size(&dftt_conf, &X, &x));
 
