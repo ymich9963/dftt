@@ -14,7 +14,7 @@ Input real-valued data and get the DFT output. Supports audio files and CSV file
 - FFT algorithms,
     - Radix-2 Decimation In Time (DIT).
     - Radix-2 Decimation In Frequency (DIF).
-- Timer to timer the process just for fun.
+- Timer to time the process just for fun.
 - Output formats,
     - Standard output to terminal.
     - Text file.
