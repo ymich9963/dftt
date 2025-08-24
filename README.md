@@ -74,6 +74,7 @@ Basic usage 'dftt <Input audio file or CSV file or CSV string> [options]. For li
         --shift,--fft-shift                     = Shift the result between -N/2 and N/2.
         --no-headers                    = No headers in the output.
 ```
+Automatically converts a multi-channel audio file to single-channel (mono) and executes the DFT. To convert your file before using the tool, see [`mix2mono`](https://github.com/ymich9963/mix2mono).
 
 ### Example Uses
 To calculate a DFT for a real-valued CSV string use it as shown below
