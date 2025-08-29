@@ -35,7 +35,7 @@ Use '--version' for version information, or '--help' for the list of options.
 
 Basic usage 'dftt <Input audio file or CSV file or CSV string> [options]. For list of options use '--help'.
 
-DFTT v0.5.0.
+DFTT v0.5.1.
 
 
 Discrete Fourier Transform Tool (DFTT) help page.
@@ -121,7 +121,7 @@ FFT algorithm 'test' not implemented.
 TestDFTT.c:1002:test_mix2mono:PASS
 TestDFTT.c:1003:test_select_fft_algo:PASS
 Started timer.
-Time taken: 0.004985000 seconds
+Time taken: 0.003619200 seconds
 
 Unable to reallocate input array.
 TestDFTT.c:1004:test_timer:PASS
