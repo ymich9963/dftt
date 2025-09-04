@@ -115,13 +115,16 @@ void test_read_input() {
 void test_read_audio_file_input() {
     double* x;
     dftt_config_t dftt_conf = {
-        .ibuff = "test.wav",
+        .ibuff = "test-2c.wav",
         .info_flag = 1,
     };
 
     TEST_ASSERT_EQUAL_INT(0, read_audio_file_input(&dftt_conf, &x));
     TEST_ASSERT_EQUAL_INT(48000, dftt_conf.sampling_freq);
     TEST_ASSERT_EQUAL_INT(48000, dftt_conf.detected_samples);
+
+    strcpy(dftt_conf.ibuff, "test-1c.wav");
+    TEST_ASSERT_EQUAL_INT(0, read_audio_file_input(&dftt_conf, &x));
 }
 
 void test_open_audio_file() {

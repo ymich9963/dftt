@@ -1,4 +1,4 @@
-TestDFTT.c:984:test_set_defaults:PASS
+TestDFTT.c:987:test_set_defaults:PASS
 
 Discrete Fourier Transform Tool (DFTT) help page.
 
@@ -27,7 +27,7 @@ Basic usage 'dftt <Input audio file or CSV file or CSV string> [options]. For li
 
 No such option '--test'. Please check inputs.
 
-TestDFTT.c:985:test_output_help:PASS
+TestDFTT.c:988:test_output_help:PASS
 
 Discrete Fourier Transform Tool (DFTT). Created by Yiannis Michael (ymich9963), 2025.
 
@@ -68,13 +68,13 @@ Basic usage 'dftt <Input audio file or CSV file or CSV string> [options]. For li
 -DFTT START-
 
 Output format 'test' not available.
-TestDFTT.c:986:test_get_options:PASS
+TestDFTT.c:989:test_get_options:PASS
 Input is not an audio file or a CSV file/string.
-TestDFTT.c:987:test_select_output_format:PASS
-TestDFTT.c:988:test_read_input:PASS
+TestDFTT.c:990:test_select_output_format:PASS
+TestDFTT.c:991:test_read_input:PASS
 
 --INFO--
-File Name: test.wav
+File Name: test-2c.wav
 Sample Rate: 48000
 Samples: 48000
 Channels: 2
@@ -82,13 +82,23 @@ Format: WAV (Microsoft)
 Subtype: Signed 16 bit PCM
 ---
 
+
+--INFO--
+File Name: test-1c.wav
+Sample Rate: 48000
+Samples: 5904
+Channels: 1
+Format: WAV (Microsoft)
+Subtype: Signed 16 bit PCM
+---
+
 System error : The system cannot find the file specified.
 
-TestDFTT.c:989:test_read_audio_file_input:PASS
+TestDFTT.c:992:test_read_audio_file_input:PASS
 
 Read count not equal to requested frames, 48000 != 1000000.
-TestDFTT.c:990:test_open_audio_file:PASS
-TestDFTT.c:991:test_get_audio_file_data:PASS
+TestDFTT.c:993:test_open_audio_file:PASS
+TestDFTT.c:994:test_get_audio_file_data:PASS
 
 --INFO--
 File Name: test.wav
@@ -99,16 +109,16 @@ Format: WAV (Microsoft)
 Subtype: Signed 8 bit PCM
 ---
 
-TestDFTT.c:992:test_output_audio_file_info:PASS
-TestDFTT.c:993:test_get_sndfile_major_format:PASS
-TestDFTT.c:994:test_get_sndfile_subtype:PASS
-TestDFTT.c:995:test_check_csv_string:PASS
-TestDFTT.c:996:test_check_csv_extension:PASS
-TestDFTT.c:997:test_read_csv_string_file_input:PASS
+TestDFTT.c:995:test_output_audio_file_info:PASS
+TestDFTT.c:996:test_get_sndfile_major_format:PASS
+TestDFTT.c:997:test_get_sndfile_subtype:PASS
+TestDFTT.c:998:test_check_csv_string:PASS
+TestDFTT.c:999:test_check_csv_extension:PASS
+TestDFTT.c:1000:test_read_csv_string_file_input:PASS
 Error when trying to read CSV file data.
-TestDFTT.c:998:test_open_csv_file:PASS
-TestDFTT.c:999:test_read_csv_file_data:PASS
-TestDFTT.c:1000:test_get_data_from_string:PASS
+TestDFTT.c:1001:test_open_csv_file:PASS
+TestDFTT.c:1002:test_read_csv_file_data:PASS
+TestDFTT.c:1003:test_get_data_from_string:PASS
 
 --INFO--
 Input String: test.txt
@@ -116,40 +126,40 @@ Samples: 4
 Format: CSV String
 --------
 
-TestDFTT.c:1001:test_output_input_info:PASS
+TestDFTT.c:1004:test_output_input_info:PASS
 FFT algorithm 'test' not implemented.
-TestDFTT.c:1002:test_mix2mono:PASS
-TestDFTT.c:1003:test_select_fft_algo:PASS
+TestDFTT.c:1005:test_mix2mono:PASS
+TestDFTT.c:1006:test_select_fft_algo:PASS
 Started timer.
-Time taken: 0.003619200 seconds
+Time taken: 0.012762300 seconds
 
 Unable to reallocate input array.
-TestDFTT.c:1004:test_timer:PASS
+TestDFTT.c:1007:test_timer:PASS
 
 Unable to reallocate input array.
-TestDFTT.c:1005:test_zero_pad_array:PASS
-TestDFTT.c:1006:test_truncate_array:PASS
-TestDFTT.c:1007:test_nextpow2:PASS
+TestDFTT.c:1008:test_zero_pad_array:PASS
+TestDFTT.c:1009:test_truncate_array:PASS
+TestDFTT.c:1010:test_nextpow2:PASS
 Adjusted input data size to 8.
 Zero-padded input.
 Adjusted input data size to 8.
 Truncated input.
-TestDFTT.c:1008:test_set_transform_size:PASS
-TestDFTT.c:1009:test_index_bit_reversal:PASS
-TestDFTT.c:1010:test_reorder_data_dit:PASS
-TestDFTT.c:1011:test_reorder_data_dif:PASS
-TestDFTT.c:1012:test_convert_to_complex:PASS
-TestDFTT.c:1013:test_get_twiddle_factor:PASS
+TestDFTT.c:1011:test_set_transform_size:PASS
+TestDFTT.c:1012:test_index_bit_reversal:PASS
+TestDFTT.c:1013:test_reorder_data_dit:PASS
+TestDFTT.c:1014:test_reorder_data_dif:PASS
+TestDFTT.c:1015:test_convert_to_complex:PASS
+TestDFTT.c:1016:test_get_twiddle_factor:PASS
 Calculating DFT.
-TestDFTT.c:1014:test_dft:PASS
-TestDFTT.c:1015:test_butterfly_dit:PASS
-TestDFTT.c:1016:test_butterfly_dif:PASS
+TestDFTT.c:1017:test_dft:PASS
+TestDFTT.c:1018:test_butterfly_dit:PASS
+TestDFTT.c:1019:test_butterfly_dif:PASS
 Calculating DFT using Radix-2 Decimation In Time.
 Generated bit-reversed index array.
 Re-ordered data based on the new index array.
 Converted mono input to complex values.
 Executed butterfly procedure.
-TestDFTT.c:1017:test_fft_radix2_dit:PASS
+TestDFTT.c:1020:test_fft_radix2_dit:PASS
 Calculating DFT using Radix-2 Decimation In Frequency.
 Converted mono input to complex values.
 Executed butterfly procedure.
@@ -157,57 +167,57 @@ Generated bit-reversed index array.
 Re-ordered data based on the new index array.
 
  To calculate frequency bins, specify the sampling frequency of the data with '-s/--sampling-frequency'.
-TestDFTT.c:1018:test_fft_radix2_dif:PASS
-TestDFTT.c:1019:test_get_freq_bins:PASS
-TestDFTT.c:1020:test_parse_complex_buff_to_RIB:PASS
-TestDFTT.c:1021:test_set_precision_format:PASS
-TestDFTT.c:1022:test_get_pow_spectrum:PASS
-TestDFTT.c:1023:test_normalise_data:PASS
-TestDFTT.c:1024:test_fft_shift:PASS
+TestDFTT.c:1021:test_fft_radix2_dif:PASS
+TestDFTT.c:1022:test_get_freq_bins:PASS
+TestDFTT.c:1023:test_parse_complex_buff_to_RIB:PASS
+TestDFTT.c:1024:test_set_precision_format:PASS
+TestDFTT.c:1025:test_get_pow_spectrum:PASS
+TestDFTT.c:1026:test_normalise_data:PASS
+TestDFTT.c:1027:test_fft_shift:PASS
 Calculated power spectrum.
 Normalised the data.
 Calculated frequency bins.
 Shifted the result to be between -N/2 and N/2.
 Will only output up to N/2.
-TestDFTT.c:1025:test_prep_outp:PASS
-TestDFTT.c:1026:test_get_datetime_string:PASS
-TestDFTT.c:1027:test_generate_file_name:PASS
+TestDFTT.c:1028:test_prep_outp:PASS
+TestDFTT.c:1029:test_get_datetime_string:PASS
+TestDFTT.c:1030:test_generate_file_name:PASS
 1000:
-TestDFTT.c:1028:test_print_freq_bin:PASS
-TestDFTT.c:1029:test_check_neg_zero:PASS
+TestDFTT.c:1031:test_print_freq_bin:PASS
+TestDFTT.c:1032:test_check_neg_zero:PASS
 Bins,Pow
 Bins,Real,Imag
 Real,Imag
 Pow
-TestDFTT.c:1030:test_print_csv_headings:PASS
+TestDFTT.c:1033:test_print_csv_headings:PASS
 
 0.00000 + j0.00000
 1.00000 + j1.00000
 2.00000 + j2.00000
 3.00000 + j3.00000
-TestDFTT.c:1031:test_output_stdout:PASS
+TestDFTT.c:1034:test_output_stdout:PASS
 
 0.00000,0.00000;1.00000,1.00000;2.00000,2.00000;3.00000,3.00000;
 
 Error, unable to open output file.
 
-TestDFTT.c:1032:test_output_stdout_csv:PASS
+TestDFTT.c:1035:test_output_stdout_csv:PASS
 Outputted data to 'test-out-columns.txt'.
 
 Error, unable to open output file.
 
-TestDFTT.c:1033:test_output_file_columns:PASS
+TestDFTT.c:1036:test_output_file_columns:PASS
 Outputted data to 'test-out-csv.txt'.
 
 Error, unable to open output file.
 
-TestDFTT.c:1034:test_output_file_csv:PASS
+TestDFTT.c:1037:test_output_file_csv:PASS
 Data covers 3 x 32d byte sections.
 
 Error, unable to open output file.
 
-TestDFTT.c:1035:test_output_file_hex_dump:PASS
-TestDFTT.c:1036:test_output_file_c_array:PASS
+TestDFTT.c:1038:test_output_file_hex_dump:PASS
+TestDFTT.c:1039:test_output_file_c_array:PASS
 
 -----------------------
 53 Tests 0 Failures 0 Ignored 

@@ -248,24 +248,25 @@ int read_input(dftt_config_t* restrict dftt_conf)
 
 int read_audio_file_input(dftt_config_t* restrict dftt_conf, double** restrict x)
 {
-    SNDFILE* file;          // Pointer to the input audio file
-    SF_INFO sf_info;        // Input audio file info
-    double* file_data;      // Input data from file
+    SNDFILE* file = NULL;          // Pointer to the input audio file
+    SF_INFO sf_info;               // Input audio file info
+    double* file_data = NULL;      // Input data from file
 
     /* Initialise the struct */
     memset(&sf_info, 0, sizeof(SF_INFO));
 
-    /* Initialise input file buffer and open he input file */
-    file = NULL;
+    /* Open the input file */
     CHECK_ERR(open_audio_file(&file, &sf_info, dftt_conf->ibuff));
 
-    /* Initialise input data array and read the input audio file */
-    file_data = NULL; 
+    /* Read the input audio file */
     CHECK_ERR(get_audio_file_data(file, &sf_info, &file_data));
 
     /* Translate the data to one channel (mono) */
     if (sf_info.channels > 1) {
         mix2mono(&sf_info, file_data, x);
+    } else {
+        *x = calloc(sf_info.frames, sizeof(double));
+        memcpy(*x, file_data, sizeof(double) * sf_info.frames); 
     }
 
     if (!dftt_conf->sampling_freq) {
@@ -294,11 +295,11 @@ int open_audio_file(SNDFILE** restrict file, SF_INFO* restrict sf_info, char* re
 int get_audio_file_data(SNDFILE* restrict file, SF_INFO* restrict sf_info, double** restrict x)
 {
     /* Get audio file data size */
-    size_t data_size = sf_info->frames * sf_info->channels;
-    *x = calloc(data_size, sizeof(double));
+    *x = calloc(sf_info->frames * sf_info->channels, sizeof(double));
 
     /* Read data and place into buffer */
-    sf_count_t sf_count = sf_readf_double(file, *x, data_size);
+    sf_count_t sf_count = sf_readf_double(file, *x, sf_info->frames);
+
     /* Check */
     if (sf_count != sf_info->frames) {
         fprintf(stderr, "\nRead count not equal to requested frames, %lld != %lld.\n", sf_count, sf_info->frames);
